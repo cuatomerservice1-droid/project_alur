@@ -916,69 +916,120 @@
         };
 
         // DASHBOARD LOGIC 
-        function renderDashboard() {
-            const tasks = getVisibleTasks();
-            const projects = getVisibleProjects();
-            const ars = getVisibleAR();
-            
-            let html = '';
-            if (currentUser.role === 'MANAGER') {
-                html = `
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total AR</p><h3 class="text-3xl font-bold">${ars.length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Waiting Mgr Review</p><h3 class="text-3xl font-bold text-purple-600">${ars.filter(a=>a.currentOwner==='MANAGER' && ['PENDING_MANAGER_REVIEW','PENDING_MANAGER_DRAFTER_REVIEW','PENDING_MANAGER_LEGAL_REVIEW','PENDING_MANAGER_COST_REVIEW', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE'].includes(a.status)).length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Prep / Costing</p><h3 class="text-3xl font-bold text-blue-600">${ars.filter(a=>['READY_FOR_NEXT_STAGE','PREPARATION_IN_PROGRESS','PENDING_PURCHASING_SOURCING','PENDING_MANAGER_COST_REVIEW'].includes(a.status)).length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Ready for GM / Proc</p><h3 class="text-3xl font-bold text-green-600">${ars.filter(a=>['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT'].includes(a.status)).length}</h3></div>
-                `;
-            } else if (currentUser.role === 'SALES') {
-                html = `
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">My Area Requests</p><h3 class="text-3xl font-bold">${ars.length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Submitted</p><h3 class="text-3xl font-bold text-purple-600">${ars.filter(a=>a.status==='PENDING_MANAGER_REVIEW' || a.status==='SUBMITTED').length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">In Process</p><h3 class="text-3xl font-bold text-blue-600">${ars.filter(a=>!['PENDING_MANAGER_REVIEW','SUBMITTED','RETURNED_TO_SALES','REJECTED','COMPLETED','CLOSED'].includes(a.status)).length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm bg-orange-50 border-orange-100"><p class="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-1">Returned</p><h3 class="text-3xl font-bold text-orange-600">${ars.filter(a=>a.status==='RETURNED_TO_SALES').length}</h3></div>
-                `;
-            } else if (currentUser.role === 'DRAFTER') {
-                html = `
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Assigned Tasks</p><h3 class="text-3xl font-bold">${tasks.filter(t=>t.status==='ASSIGNED').length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Tasks In Progress</p><h3 class="text-3xl font-bold text-blue-600">${tasks.filter(t=>t.status==='IN PROGRESS').length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Waiting AR Submission</p><h3 class="text-3xl font-bold text-orange-600">${ars.filter(a=>a.currentOwner==='DRAFTER' || ['ASSIGNED_TO_DRAFTER','RETURNED_TO_DRAFTER'].includes(a.status)).length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Completed Tasks</p><h3 class="text-3xl font-bold text-green-600">${tasks.filter(t=>t.status==='COMPLETED').length}</h3></div>
-                `;
-            } else if (currentUser.role === 'LEGAL') {
-                html = `
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Waiting Review</p><h3 class="text-3xl font-bold text-orange-600">${ars.filter(a=>a.currentOwner==='LEGAL' || ['ASSIGNED_TO_LEGAL','RETURNED_TO_LEGAL'].includes(a.status) || (a.status==='READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status==='RETURNED')).length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pending Status</p><h3 class="text-3xl font-bold text-blue-600">${ars.filter(a=>a.legalResult?.permitStatus==='PENDING').length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Completed</p><h3 class="text-3xl font-bold text-green-600">${ars.filter(a=>a.legalResult && !['ASSIGNED_TO_LEGAL','RETURNED_TO_LEGAL'].includes(a.status) && !(a.status==='READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status==='RETURNED')).length}</h3></div>
-                `;
-            } else if (currentUser.role === 'SPV') {
-                const pendDocs = tasks.filter(t => t.taskType === 'POLE_INSTALLATION' && t.status !== 'COMPLETED').length;
-                html = `
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Assigned Projects</p><h3 class="text-3xl font-bold">${projects.length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">On Progress</p><h3 class="text-3xl font-bold text-blue-600">${projects.filter(p=>p.status==='ON PROGRESS').length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Completed</p><h3 class="text-3xl font-bold text-green-600">${projects.filter(p=>p.status==='COMPLETED').length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm bg-orange-50 border-orange-100"><p class="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-1">Pending Documentation</p><h3 class="text-3xl font-bold text-orange-600">${pendDocs}</h3></div>
-                `;
-            } else if (currentUser.role === 'PURCHASING') {
-                html = `
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Sourcing Requests</p><h3 class="text-3xl font-bold">${ars.filter(a=>a.currentOwner==='PURCHASING').length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pending Sourcing</p><h3 class="text-3xl font-bold text-orange-600">${ars.filter(a=>a.status==='PENDING_PURCHASING_SOURCING' || a.status==='RETURNED_TO_PURCHASING').length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Submitted Sourcing</p><h3 class="text-3xl font-bold text-blue-600">${ars.filter(a=>a.status==='PENDING_MANAGER_COST_REVIEW').length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Completed (Project Prep)</p><h3 class="text-3xl font-bold text-green-600">${ars.filter(a=>['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(a.status)).length}</h3></div>
-                `;
-            } else if (currentUser.role === 'GENERAL_MANAGER') {
-                let pendingTech = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.technical?.status === 'PENDING').length;
-                let pendingLeg = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status === 'PENDING').length;
-                let returnedTech = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.technical?.status === 'RETURNED').length;
-                let returnedLeg = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status === 'RETURNED').length;
-                let readyProc = ars.filter(a => ['READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(a.status)).length;
-                html = `
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pending Tech Review</p><h3 class="text-3xl font-bold text-blue-600">${pendingTech}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pending Legal Review</p><h3 class="text-3xl font-bold text-indigo-600">${pendingLeg}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Returned (Tech/Leg)</p><h3 class="text-3xl font-bold text-orange-600">${returnedTech + returnedLeg}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm bg-green-50 border-green-100"><p class="text-[10px] font-bold text-green-500 uppercase tracking-widest mb-1">Procurement / Executed</p><h3 class="text-3xl font-bold text-green-700">${readyProc}</h3></div>
-                `;
+function renderDashboard() {
+    const tasks = getVisibleTasks();
+    const projects = getVisibleProjects();
+    const ars = getVisibleAR();
+    
+    let html = '';
+    
+    // Fungsi bantuan untuk membuat kartu yang Aesthetic & Classy
+    const createAestheticCard = (title, count, icon, colorFrom, colorTo, textColor) => `
+        <div class="relative overflow-hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all duration-300 group cursor-default">
+            <div class="absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br ${colorFrom} ${colorTo} rounded-full opacity-20 group-hover:scale-150 transition-transform duration-500"></div>
+            <div class="relative z-10 flex justify-between items-center">
+                <div>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">${title}</p>
+                    <h3 class="text-4xl font-extrabold ${textColor}">${count}</h3>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shadow-inner">
+                    <i class="fa-solid ${icon} text-2xl ${textColor} opacity-80"></i>
+                </div>
+            </div>
+        </div>
+    `;
+
+    if (currentUser.role === 'MANAGER') {
+        html = createAestheticCard("Total AR", ars.length, "fa-folder-open", "from-slate-300", "to-slate-100", "text-slate-800") +
+               createAestheticCard("Waiting Review", ars.filter(a=>a.currentOwner==='MANAGER' && ['PENDING_MANAGER_REVIEW','PENDING_MANAGER_DRAFTER_REVIEW','PENDING_MANAGER_LEGAL_REVIEW','PENDING_MANAGER_COST_REVIEW', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE'].includes(a.status)).length, "fa-clock", "from-purple-300", "to-purple-100", "text-purple-600") +
+               createAestheticCard("Prep / Costing", ars.filter(a=>['READY_FOR_NEXT_STAGE','PREPARATION_IN_PROGRESS','PENDING_PURCHASING_SOURCING','PENDING_MANAGER_COST_REVIEW'].includes(a.status)).length, "fa-calculator", "from-blue-300", "to-blue-100", "text-blue-600") +
+               createAestheticCard("Ready for GM", ars.filter(a=>['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT'].includes(a.status)).length, "fa-check-double", "from-green-300", "to-green-100", "text-emerald-600");
+    } 
+    else if (currentUser.role === 'GENERAL_MANAGER') {
+        let pendingTech = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.technical?.status === 'PENDING').length;
+        let pendingLeg = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status === 'PENDING').length;
+        let returnedTech = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.technical?.status === 'RETURNED').length;
+        let returnedLeg = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status === 'RETURNED').length;
+        let readyProc = ars.filter(a => ['READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(a.status)).length;
+        
+        html = createAestheticCard("Pending Tech", pendingTech, "fa-microchip", "from-blue-300", "to-blue-100", "text-blue-600") +
+               createAestheticCard("Pending Legal", pendingLeg, "fa-scale-balanced", "from-indigo-300", "to-indigo-100", "text-indigo-600") +
+               createAestheticCard("Returned (Rev)", returnedTech + returnedLeg, "fa-rotate-left", "from-orange-300", "to-orange-100", "text-orange-600") +
+               createAestheticCard("Ready Proc / Exec", readyProc, "fa-rocket", "from-emerald-300", "to-emerald-100", "text-emerald-600");
+    }
+    // --- Bagian divisi lain (Sales, Drafter, Legal, dll) dibiarkan rapi juga ---
+    else if (currentUser.role === 'SALES') {
+        html = createAestheticCard("My Area Requests", ars.length, "fa-map", "from-slate-300", "to-slate-100", "text-slate-800") +
+               createAestheticCard("Submitted", ars.filter(a=>a.status==='PENDING_MANAGER_REVIEW' || a.status==='SUBMITTED').length, "fa-paper-plane", "from-purple-300", "to-purple-100", "text-purple-600") +
+               createAestheticCard("In Process", ars.filter(a=>!['PENDING_MANAGER_REVIEW','SUBMITTED','RETURNED_TO_SALES','REJECTED','COMPLETED','CLOSED'].includes(a.status)).length, "fa-spinner", "from-blue-300", "to-blue-100", "text-blue-600") +
+               createAestheticCard("Returned", ars.filter(a=>a.status==='RETURNED_TO_SALES').length, "fa-triangle-exclamation", "from-red-300", "to-red-100", "text-red-500");
+    } else if (currentUser.role === 'DRAFTER') {
+        html = createAestheticCard("Assigned Tasks", tasks.filter(t=>t.status==='ASSIGNED').length, "fa-clipboard-list", "from-slate-300", "to-slate-100", "text-slate-800") +
+               createAestheticCard("In Progress", tasks.filter(t=>t.status==='IN PROGRESS').length, "fa-person-digging", "from-blue-300", "to-blue-100", "text-blue-600") +
+               createAestheticCard("Waiting AR Sub.", ars.filter(a=>a.currentOwner==='DRAFTER' || ['ASSIGNED_TO_DRAFTER','RETURNED_TO_DRAFTER'].includes(a.status)).length, "fa-pen-ruler", "from-orange-300", "to-orange-100", "text-orange-600") +
+               createAestheticCard("Completed", tasks.filter(t=>t.status==='COMPLETED').length, "fa-check", "from-green-300", "to-green-100", "text-emerald-600");
+    } else if (currentUser.role === 'LEGAL') {
+        html = createAestheticCard("Waiting Review", ars.filter(a=>a.currentOwner==='LEGAL' || ['ASSIGNED_TO_LEGAL','RETURNED_TO_LEGAL'].includes(a.status) || (a.status==='READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status==='RETURNED')).length, "fa-file-signature", "from-orange-300", "to-orange-100", "text-orange-600") +
+               createAestheticCard("Pending Status", ars.filter(a=>a.legalResult?.permitStatus==='PENDING').length, "fa-hourglass-half", "from-blue-300", "to-blue-100", "text-blue-600") +
+               createAestheticCard("Completed", ars.filter(a=>a.legalResult && !['ASSIGNED_TO_LEGAL','RETURNED_TO_LEGAL'].includes(a.status) && !(a.status==='READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status==='RETURNED')).length, "fa-stamp", "from-green-300", "to-green-100", "text-emerald-600");
+    } else if (currentUser.role === 'SPV') {
+        const pendDocs = tasks.filter(t => t.taskType === 'POLE_INSTALLATION' && t.status !== 'COMPLETED').length;
+        html = createAestheticCard("Assigned Projects", projects.length, "fa-hard-hat", "from-slate-300", "to-slate-100", "text-slate-800") +
+               createAestheticCard("On Progress", projects.filter(p=>p.status==='ON PROGRESS').length, "fa-truck-fast", "from-blue-300", "to-blue-100", "text-blue-600") +
+               createAestheticCard("Completed", projects.filter(p=>p.status==='COMPLETED').length, "fa-flag-checkered", "from-green-300", "to-green-100", "text-emerald-600") +
+               createAestheticCard("Pend. Docs", pendDocs, "fa-camera", "from-orange-300", "to-orange-100", "text-orange-600");
+    } else if (currentUser.role === 'PURCHASING') {
+        html = createAestheticCard("Sourcing Reqs", ars.filter(a=>a.currentOwner==='PURCHASING').length, "fa-cart-flatbed", "from-slate-300", "to-slate-100", "text-slate-800") +
+               createAestheticCard("Pending Source", ars.filter(a=>a.status==='PENDING_PURCHASING_SOURCING' || a.status==='RETURNED_TO_PURCHASING').length, "fa-magnifying-glass-dollar", "from-orange-300", "to-orange-100", "text-orange-600") +
+               createAestheticCard("Submitted", ars.filter(a=>a.status==='PENDING_MANAGER_COST_REVIEW').length, "fa-file-invoice-dollar", "from-blue-300", "to-blue-100", "text-blue-600") +
+               createAestheticCard("Ready Proc", ars.filter(a=>['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(a.status)).length, "fa-box-open", "from-green-300", "to-green-100", "text-emerald-600");
+    }
+
+    document.getElementById('dashboard-kpi').innerHTML = html;
+
+    // --- MENGAKTIFKAN CHART MODERN UNTUK MANAGER & GM ---
+    const chartContainer = document.getElementById('chart-card');
+    if (currentUser.role === 'MANAGER' || currentUser.role === 'GENERAL_MANAGER') {
+        chartContainer.classList.remove('hide');
+        chartContainer.className = "bg-white p-6 rounded-2xl shadow-sm border border-slate-100"; // Update styling
+        chartContainer.querySelector('h3').className = "text-sm font-bold text-slate-700 uppercase tracking-widest mb-6 border-b pb-2";
+        chartContainer.querySelector('h3').innerHTML = '<i class="fa-solid fa-chart-pie text-blue-500 mr-2"></i> Area Request Distribution';
+
+        // Hitung Data Chart
+        const statusCounts = { 'New/Process': 0, 'Returned': 0, 'Ready GM/Procurement': 0 };
+        ars.forEach(a => {
+            if (a.status.includes('RETURNED')) statusCounts['Returned']++;
+            else if (['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(a.status)) statusCounts['Ready GM/Procurement']++;
+            else statusCounts['New/Process']++;
+        });
+
+        const ctx = document.getElementById('chart-task-status');
+        if (dashboardChartInstance) { dashboardChartInstance.destroy(); } // Hapus grafik lama jika ada
+
+        dashboardChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['New / In Process', 'Returned / Revision', 'Ready GM / Procured'],
+                datasets: [{
+                    data: [statusCounts['New/Process'], statusCounts['Returned'], statusCounts['Ready GM/Procurement']],
+                    backgroundColor: ['#3b82f6', '#f97316', '#10b981'], // Tailwind blue-500, orange-500, emerald-500
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { font: { family: "'Inter', sans-serif", size: 11 } } }
+                },
+                cutout: '70%'
             }
-            document.getElementById('dashboard-kpi').innerHTML = html;
-        }
+        });
+    } else {
+        chartContainer.classList.add('hide'); // Sembunyikan untuk role lain agar fokus ke angka
+    }
+}
 
         // AREA REQUEST TABLE RENDERER
         function renderAreaRequests() {
