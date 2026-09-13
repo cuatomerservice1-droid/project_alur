@@ -741,10 +741,10 @@
             if (currentUser.role === 'SALES') return ars.filter(a => a.salesUserId === currentUser.id);
             if (currentUser.role === 'DRAFTER') return ars.filter(a => a.drafterId === currentUser.id);
             if (currentUser.role === 'LEGAL') {
-                return ars.filter(a => ['ASSIGNED_TO_LEGAL', 'RETURNED_TO_LEGAL', 'PENDING_MANAGER_LEGAL_REVIEW', 'READY_FOR_NEXT_STAGE', 'PREPARATION_IN_PROGRESS', 'PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'COMPLETED'].includes(a.status) || a.legalResult !== null || ['LEGAL_REVIEW', 'WAITING_MANAGER_FINAL_REVIEW', 'PROJECT_ASSIGNED', 'ON_PROJECT'].includes(a.status));
+                return ars.filter(a => ['ASSIGNED_TO_LEGAL', 'RETURNED_TO_LEGAL', 'PENDING_MANAGER_LEGAL_REVIEW', 'READY_FOR_NEXT_STAGE', 'PREPARATION_IN_PROGRESS', 'PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(a.status) || a.legalResult !== null || ['LEGAL_REVIEW', 'WAITING_MANAGER_FINAL_REVIEW', 'PROJECT_ASSIGNED', 'ON_PROJECT'].includes(a.status));
             }
             if (currentUser.role === 'PURCHASING') {
-                return ars.filter(a => ['PENDING_PURCHASING_SOURCING', 'RETURNED_TO_PURCHASING', 'PENDING_MANAGER_COST_REVIEW', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'COMPLETED'].includes(a.status) || a.currentOwner === 'PURCHASING');
+                return ars.filter(a => ['PENDING_PURCHASING_SOURCING', 'RETURNED_TO_PURCHASING', 'PENDING_MANAGER_COST_REVIEW', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(a.status) || a.currentOwner === 'PURCHASING');
             }
             return []; // SPV does not access AR directly
         }
@@ -902,10 +902,10 @@
          * ========================================== */
         const getStatusBadge = (status) => {
             let color = 'bg-gray-100 text-gray-700 border-gray-200';
-            if(status.includes('COMPLETED') || status === 'CLEAR' || status.startsWith('READY_FOR')) color = 'bg-green-100 text-green-700 border-green-200';
-            else if(status.includes('PROGRESS') || status.includes('ASSIGNED_TO') || status === 'ON_PROJECT' || status === 'PROJECT_ASSIGNED') color = 'bg-blue-100 text-blue-700 border-blue-200';
+            if(status.includes('COMPLETED') || status === 'CLEAR' || status.startsWith('READY_FOR') || status === 'PROJECT_ASSIGNED' || status === 'PENDING_PROJECT_RELEASE') color = 'bg-green-100 text-green-700 border-green-200';
+            else if(status.includes('PROGRESS') || status.includes('ASSIGNED_TO') || status === 'ON_PROJECT' ) color = 'bg-blue-100 text-blue-700 border-blue-200';
             else if(status.includes('WAITING') || status.includes('PENDING_MANAGER') || status.includes('PENDING_PURCHASING') || status === 'SUBMITTED' || status.includes('REVIEW')) color = 'bg-purple-100 text-purple-700 border-purple-200';
-            else if(status.includes('RETURNED') || status === 'PENDING' || status === 'NEED_PERMIT' || status === 'DRAFTER_ASSIGNED' || status === 'ASSIGNED') color = 'bg-orange-100 text-orange-700 border-orange-200';
+            else if(status.includes('RETURNED') || status === 'PENDING' || status === 'NEED_PERMIT' || status === 'DRAFTER_ASSIGNED' || status === 'ASSIGNED' || status === 'PENDING_BYPASS_APPROVAL') color = 'bg-orange-100 text-orange-700 border-orange-200';
             else if(status === 'REJECTED' || status === 'NOT_RECOMMENDED' || status === 'CLOSED') color = 'bg-red-100 text-red-700 border-red-200';
             return `<span class="px-2 py-0.5 border rounded text-[10px] font-bold ${color}">${status.replace(/_/g, ' ')}</span>`;
         };
@@ -925,7 +925,7 @@
             if (currentUser.role === 'MANAGER') {
                 html = `
                     <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total AR</p><h3 class="text-3xl font-bold">${ars.length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Waiting Mgr Review</p><h3 class="text-3xl font-bold text-purple-600">${ars.filter(a=>a.currentOwner==='MANAGER' && ['PENDING_MANAGER_REVIEW','PENDING_MANAGER_DRAFTER_REVIEW','PENDING_MANAGER_LEGAL_REVIEW','PENDING_MANAGER_COST_REVIEW'].includes(a.status)).length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Waiting Mgr Review</p><h3 class="text-3xl font-bold text-purple-600">${ars.filter(a=>a.currentOwner==='MANAGER' && ['PENDING_MANAGER_REVIEW','PENDING_MANAGER_DRAFTER_REVIEW','PENDING_MANAGER_LEGAL_REVIEW','PENDING_MANAGER_COST_REVIEW', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE'].includes(a.status)).length}</h3></div>
                     <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Prep / Costing</p><h3 class="text-3xl font-bold text-blue-600">${ars.filter(a=>['READY_FOR_NEXT_STAGE','PREPARATION_IN_PROGRESS','PENDING_PURCHASING_SOURCING','PENDING_MANAGER_COST_REVIEW'].includes(a.status)).length}</h3></div>
                     <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Ready for GM / Proc</p><h3 class="text-3xl font-bold text-green-600">${ars.filter(a=>['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT'].includes(a.status)).length}</h3></div>
                 `;
@@ -962,19 +962,19 @@
                     <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Sourcing Requests</p><h3 class="text-3xl font-bold">${ars.filter(a=>a.currentOwner==='PURCHASING').length}</h3></div>
                     <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pending Sourcing</p><h3 class="text-3xl font-bold text-orange-600">${ars.filter(a=>a.status==='PENDING_PURCHASING_SOURCING' || a.status==='RETURNED_TO_PURCHASING').length}</h3></div>
                     <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Submitted Sourcing</p><h3 class="text-3xl font-bold text-blue-600">${ars.filter(a=>a.status==='PENDING_MANAGER_COST_REVIEW').length}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Completed (Project Prep)</p><h3 class="text-3xl font-bold text-green-600">${ars.filter(a=>['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT'].includes(a.status)).length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Completed (Project Prep)</p><h3 class="text-3xl font-bold text-green-600">${ars.filter(a=>['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(a.status)).length}</h3></div>
                 `;
             } else if (currentUser.role === 'GENERAL_MANAGER') {
                 let pendingTech = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.technical?.status === 'PENDING').length;
                 let pendingLeg = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status === 'PENDING').length;
                 let returnedTech = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.technical?.status === 'RETURNED').length;
                 let returnedLeg = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status === 'RETURNED').length;
-                let readyProc = ars.filter(a => a.status === 'READY_FOR_PROCUREMENT').length;
+                let readyProc = ars.filter(a => ['READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(a.status)).length;
                 html = `
                     <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pending Tech Review</p><h3 class="text-3xl font-bold text-blue-600">${pendingTech}</h3></div>
                     <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pending Legal Review</p><h3 class="text-3xl font-bold text-indigo-600">${pendingLeg}</h3></div>
                     <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Returned (Tech/Leg)</p><h3 class="text-3xl font-bold text-orange-600">${returnedTech + returnedLeg}</h3></div>
-                    <div class="bg-white p-5 rounded-lg border shadow-sm bg-green-50 border-green-100"><p class="text-[10px] font-bold text-green-500 uppercase tracking-widest mb-1">Ready for Procurement</p><h3 class="text-3xl font-bold text-green-700">${readyProc}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm bg-green-50 border-green-100"><p class="text-[10px] font-bold text-green-500 uppercase tracking-widest mb-1">Procurement / Executed</p><h3 class="text-3xl font-bold text-green-700">${readyProc}</h3></div>
                 `;
             }
             document.getElementById('dashboard-kpi').innerHTML = html;
@@ -1107,7 +1107,7 @@
             currentDetailArId = id;
 
             // Safe init for GM Approval if reaching required stage
-            if (['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT'].includes(ar.status)) {
+            if (['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(ar.status)) {
                 if (!ar.gmApproval) {
                     ar.gmApproval = {
                         technical: { status: 'PENDING', note: '', updatedBy: '', updatedAt: '', history: [] },
@@ -1137,7 +1137,7 @@
             const dAlert = document.getElementById('dar-drafter-revision');
             secDrafter.classList.add('hide'); dDisp.classList.add('hide'); dForm.classList.add('hide'); dAlert.classList.add('hide');
             
-            if (ar.drafterResult || ['ASSIGNED_TO_DRAFTER', 'PENDING_MANAGER_DRAFTER_REVIEW', 'RETURNED_TO_DRAFTER', 'ASSIGNED_TO_LEGAL', 'PENDING_MANAGER_LEGAL_REVIEW', 'RETURNED_TO_LEGAL', 'READY_FOR_NEXT_STAGE', 'PREPARATION_IN_PROGRESS', 'PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'COMPLETED'].includes(ar.status)) {
+            if (ar.drafterResult || ['ASSIGNED_TO_DRAFTER', 'PENDING_MANAGER_DRAFTER_REVIEW', 'RETURNED_TO_DRAFTER', 'ASSIGNED_TO_LEGAL', 'PENDING_MANAGER_LEGAL_REVIEW', 'RETURNED_TO_LEGAL', 'READY_FOR_NEXT_STAGE', 'PREPARATION_IN_PROGRESS', 'PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(ar.status)) {
                 secDrafter.classList.remove('hide');
                 if(ar.drafterResult) {
                     dDisp.classList.remove('hide');
@@ -1171,7 +1171,7 @@
             const lAlert = document.getElementById('dar-legal-revision');
             secLegal.classList.add('hide'); lDisp.classList.add('hide'); lForm.classList.add('hide'); lAlert.classList.add('hide');
 
-            if (ar.legalResult || ['ASSIGNED_TO_LEGAL', 'PENDING_MANAGER_LEGAL_REVIEW', 'RETURNED_TO_LEGAL', 'READY_FOR_NEXT_STAGE', 'PREPARATION_IN_PROGRESS', 'PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'COMPLETED'].includes(ar.status)) {
+            if (ar.legalResult || ['ASSIGNED_TO_LEGAL', 'PENDING_MANAGER_LEGAL_REVIEW', 'RETURNED_TO_LEGAL', 'READY_FOR_NEXT_STAGE', 'PREPARATION_IN_PROGRESS', 'PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(ar.status)) {
                 secLegal.classList.remove('hide');
                 if(ar.legalResult) {
                     lDisp.classList.remove('hide');
@@ -1211,7 +1211,7 @@
 
             // 4. Setup Project Preparation Section
             const secPrep = document.getElementById('section-preparation');
-            if(ar.projectPreparation || ['PREPARATION_IN_PROGRESS', 'PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'COMPLETED'].includes(ar.status)) {
+            if(ar.projectPreparation || ['PREPARATION_IN_PROGRESS', 'PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(ar.status)) {
                 secPrep.classList.remove('hide');
                 renderPreparationSection(ar);
             } else { secPrep.classList.add('hide'); }
@@ -1271,15 +1271,55 @@
                         btnCont.innerHTML = revisionBtns;
                     }
                 }
+                // PATCH 5: Bypass & Project Release Actions
+                else if (ar.status === 'PENDING_BYPASS_APPROVAL') {
+                    mgrSec.classList.remove('hide');
+                    if(noteCont) noteCont.classList.remove('hide');
+                    document.getElementById('mgr-note').placeholder = "Alasan Approve/Reject Bypass...";
+                    mgrSec.querySelector('h4').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Material Bypass Approval`;
+                    btnCont.innerHTML = `
+                        <button onclick="procurementAction('APPROVE_BYPASS')" class="bg-green-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-green-700 cursor-pointer">Approve Bypass</button>
+                        <button onclick="procurementAction('REJECT_BYPASS')" class="bg-red-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-red-700 cursor-pointer">Reject Bypass (Return to Purchasing)</button>
+                    `;
+                } 
+                else if (ar.status === 'PENDING_PROJECT_RELEASE') {
+                    mgrSec.classList.remove('hide');
+                    if(noteCont) noteCont.classList.add('hide'); // Hide default note
+                    mgrSec.querySelector('h4').innerHTML = `<i class="fa-solid fa-rocket"></i> Project Release & SPV Assignment`;
+                    
+                    const spvOptions = getRawUsers().filter(u=>u.role==='SPV').map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+                    const releaseForm = `
+                        <div class="w-full space-y-3 mb-3 bg-white p-3 rounded border border-gray-200">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div><label class="block text-[10px] font-semibold text-gray-700">Assign SPV *</label><select id="rel-spv" class="w-full text-sm border rounded px-2 py-1.5 bg-gray-50 focus:outline-none">${spvOptions}</select></div>
+                                <div><label class="block text-[10px] font-semibold text-gray-700">Project Target Date *</label><input type="date" id="rel-target" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></div>
+                            </div>
+                        </div>
+                    `;
+                    btnCont.innerHTML = releaseForm + `<button onclick="procurementAction('RELEASE_PROJECT')" class="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded w-full hover:bg-blue-700 cursor-pointer">Release Project to SPV</button>`;
+                }
             }
             
             // Purchasing Action
-            if(currentUser.role === 'PURCHASING' && (ar.status === 'PENDING_PURCHASING_SOURCING' || ar.status === 'RETURNED_TO_PURCHASING')) {
-                mgrSec.classList.remove('hide'); // re-use section for purchasing submission
-                document.getElementById('mgr-note').value = '';
-                mgrSec.querySelector('h4').innerHTML = `<i class="fa-solid fa-boxes-packing"></i> Purchasing Action`;
-                document.getElementById('mgr-note').placeholder = "Optional Note...";
-                btnCont.innerHTML = `<button onclick="submitSourcing()" class="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-blue-700 cursor-pointer">Submit Sourcing Results to Manager</button>`;
+            if(currentUser.role === 'PURCHASING') {
+                if (ar.status === 'PENDING_PURCHASING_SOURCING' || ar.status === 'RETURNED_TO_PURCHASING') {
+                    mgrSec.classList.remove('hide'); 
+                    document.getElementById('mgr-note').value = '';
+                    mgrSec.querySelector('h4').innerHTML = `<i class="fa-solid fa-boxes-packing"></i> Purchasing Action`;
+                    document.getElementById('mgr-note').placeholder = "Optional Note...";
+                    btnCont.innerHTML = `<button onclick="submitSourcing()" class="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-blue-700 cursor-pointer">Submit Sourcing Results to Manager</button>`;
+                }
+                // PATCH 5: Material Readiness
+                else if (ar.status === 'READY_FOR_PROCUREMENT') {
+                    mgrSec.classList.remove('hide');
+                    document.getElementById('mgr-note').value = '';
+                    mgrSec.querySelector('h4').innerHTML = `<i class="fa-solid fa-boxes-packing"></i> Material Readiness Check`;
+                    if(noteCont) noteCont.classList.add('hide'); // No note needed for just confirming
+                    btnCont.innerHTML = `
+                        <button onclick="procurementAction('MATERIAL_READY')" class="bg-green-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-green-700 cursor-pointer">Material Ready</button>
+                        <button onclick="procurementAction('MATERIAL_NOT_READY')" class="bg-orange-500 text-white text-xs font-bold px-3 py-2 rounded hover:bg-orange-600 cursor-pointer">Material Not Ready (Req. Bypass)</button>
+                    `;
+                }
             }
 
             // General Manager Action (PATCH 4)
@@ -1348,7 +1388,7 @@
             let html = '';
             
             // Reusable render for Internal Cost Tables (A, B, C, D)
-            if (currentUser.role !== 'PURCHASING' || ['READY_FOR_GM_APPROVAL','READY_FOR_PROCUREMENT','COMPLETED'].includes(ar.status)) {
+            if (currentUser.role !== 'PURCHASING' || ['READY_FOR_GM_APPROVAL','READY_FOR_PROCUREMENT','PENDING_BYPASS_APPROVAL','PENDING_PROJECT_RELEASE','PROJECT_ASSIGNED','ON_PROJECT','COMPLETED'].includes(ar.status)) {
                 
                 // Manager Alert for Technical Revision inside READY_FOR_GM_APPROVAL
                 const tAlert = document.getElementById('dar-manager-tech-revision');
@@ -1441,7 +1481,7 @@
 
             // PURCHASING SOURCING SECTION
             const sourcingItems = [...prep.materials, ...prep.equipment].filter(i => i.needsSourcing);
-            if (sourcingItems.length > 0 && ['PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'COMPLETED'].includes(ar.status)) {
+            if (sourcingItems.length > 0 && ['PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(ar.status)) {
                 
                 if (ar.status === 'RETURNED_TO_PURCHASING') {
                     html += `<div class="mb-3 text-sm text-red-600 bg-red-50 p-3 rounded border border-red-100">
@@ -1507,7 +1547,7 @@
             }
 
             // GM APPROVAL SUMMARY (PATCH 4)
-            if (ar.gmApproval && ['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT'].includes(ar.status)) {
+            if (ar.gmApproval && ['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(ar.status)) {
                 const tStat = ar.gmApproval.technical.status;
                 const lStat = ar.gmApproval.legal.status;
                 
@@ -1774,7 +1814,7 @@
         }
 
         function submitLegalResult() {
-            if(!currentUser || currentUser.role !== 'LEGAL') { showToast('Akses ditolak', true); return; }
+            if(!currentUser || currentUser.role !== 'LEGAL') return;
             const status = document.getElementById('in-permit-status').value; 
             const info = document.getElementById('in-permit-info').value.trim();
             const cons = document.getElementById('in-constraints').value.trim(); 
@@ -1930,6 +1970,77 @@
             openArDetail(currentDetailArId); renderAreaRequests(); renderDashboard();
         }
 
+        // --- PROCUREMENT & PROJECT RELEASE (PATCH 5) ---
+        function procurementAction(actionType) {
+            const ars = getRawAR();
+            const ar = ars.find(a => a.id === currentDetailArId);
+            const oldStatus = ar.status;
+            let noteEl = document.getElementById('mgr-note');
+            let note = noteEl ? noteEl.value.trim() : '';
+
+            if (actionType === 'MATERIAL_READY') {
+                if (currentUser.role !== 'PURCHASING') return;
+                ar.status = 'PENDING_PROJECT_RELEASE';
+                ar.currentOwner = 'MANAGER';
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Material Confirmed Ready`, note: 'Proceeding to Project Release' });
+            } 
+            else if (actionType === 'MATERIAL_NOT_READY') {
+                if (currentUser.role !== 'PURCHASING') return;
+                ar.status = 'PENDING_BYPASS_APPROVAL';
+                ar.currentOwner = 'MANAGER';
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Material Not Ready`, note: 'Requesting Bypass from Manager' });
+            }
+            else if (actionType === 'APPROVE_BYPASS') {
+                if (currentUser.role !== 'MANAGER') return;
+                ar.status = 'PENDING_PROJECT_RELEASE';
+                ar.currentOwner = 'MANAGER';
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Bypass Approved`, note: note || 'Bypass granted for missing materials' });
+            }
+            else if (actionType === 'REJECT_BYPASS') {
+                if (currentUser.role !== 'MANAGER') return;
+                if (!note) { showToast('Alasan penolakan bypass wajib diisi!', true); return; }
+                ar.status = 'READY_FOR_PROCUREMENT';
+                ar.currentOwner = 'PURCHASING';
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Bypass Rejected`, note: note });
+            }
+            else if (actionType === 'RELEASE_PROJECT') {
+                if (currentUser.role !== 'MANAGER') return;
+                const spvId = document.getElementById('rel-spv').value;
+                const targetDate = document.getElementById('rel-target').value;
+                
+                if (!spvId || !targetDate) { showToast('SPV dan Target Date wajib diisi!', true); return; }
+                
+                // Generate Project Object
+                const projs = getRawProjects();
+                const newProjectId = 'P-' + new Date().getTime().toString().slice(-4);
+                projs.push({ 
+                    id: newProjectId, 
+                    areaRequestId: ar.id, 
+                    name: `Project: ${ar.areaName}`, 
+                    client: ar.id, 
+                    targetDate: targetDate, 
+                    spvId: spvId, 
+                    status: 'ASSIGNED', 
+                    progress: 0, 
+                    priority: 'HIGH', 
+                    managerNote: 'Automatically generated from AR Release' 
+                });
+                localStorage.setItem(NS_PROJECTS, JSON.stringify(projs));
+
+                const spvName = getRawUsers().find(u => u.id === spvId)?.name || 'SPV';
+
+                ar.status = 'PROJECT_ASSIGNED';
+                ar.currentOwner = 'SPV';
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Project Released`, note: `Assigned to ${spvName} (Project ID: ${newProjectId})` });
+            }
+
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            showToast('Aksi berhasil diproses!');
+            openArDetail(ar.id); 
+            renderAreaRequests(); 
+            renderDashboard();
+        }
+
         // --- GM ACTIONS (PATCH 4) ---
         function gmAction(domain, action) {
             if (!currentUser || currentUser.role !== 'GENERAL_MANAGER') {
@@ -2013,8 +2124,8 @@
                     ar.currentOwner = 'PURCHASING';
                     ar.history.push({ 
                         timestamp: new Date().toISOString(), 
-                        actor: currentUser.name, 
-                        role: currentUser.role, 
+                        actor: 'System', 
+                        role: 'SYSTEM', 
                         action: `GM Approval Complete`, 
                         note: `Both Technical and Legal approved. Status changed from ${oldStatus} to ${ar.status}.` 
                     });
