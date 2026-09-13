@@ -1,0 +1,2346 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT FLOW - Technical Project Management</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .hide { display: none !important; }
+        .modal { transition: opacity 0.3s ease; }
+        .progress-bar-inner { transition: width 0.5s ease; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .ar-section { border-left: 2px solid #3b82f6; padding-left: 1rem; margin-bottom: 1.5rem; }
+        .checklist-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-family: monospace; margin-bottom: 0.25rem; }
+        .checklist-item.valid { color: #16a34a; }
+        .checklist-item.invalid { color: #dc2626; }
+        
+        /* Preparation Section specific */
+        .prep-table th { background-color: #f8fafc; font-size: 10px; text-transform: uppercase; color: #64748b; padding: 6px 8px; font-weight: 700; text-align: left; }
+        .prep-table td { padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 11px; }
+    </style>
+</head>
+<body class="text-gray-800 h-screen overflow-hidden flex">
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-view" class="fixed inset-0 bg-gray-900 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-96 max-w-full text-center flex flex-col max-h-[90vh]">
+            <h1 class="text-2xl font-bold text-blue-600 mb-2 flex-shrink-0"><i class="fa-solid fa-layer-group"></i> PROJECT FLOW</h1>
+            <p class="text-gray-500 mb-4 text-sm flex-shrink-0">Pilih user untuk simulasi Role & Visibility</p>
+            <div class="space-y-2 overflow-y-auto flex-1 pr-2" id="login-buttons"></div>
+            <button onclick="resetData()" class="mt-4 text-xs text-red-500 hover:underline cursor-pointer flex-shrink-0">Reset LocalStorage Data</button>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div id="app-view" class="hide w-full h-full flex">
+        
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-slate-900 text-white flex flex-col transition-all duration-300">
+            <div class="h-16 flex items-center px-6 border-b border-slate-700">
+                <h2 class="text-xl font-bold tracking-wider text-blue-400"><i class="fa-solid fa-layer-group"></i> PROJ FLOW</h2>
+            </div>
+            <div class="p-4 flex items-center gap-3 border-b border-slate-800">
+                <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold" id="user-initial"></div>
+                <div>
+                    <div class="text-sm font-semibold" id="user-name"></div>
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold" id="user-role"></div>
+                </div>
+            </div>
+            <nav class="flex-1 py-4 px-3 space-y-1 overflow-y-auto" id="sidebar-menu"></nav>
+            <div class="p-4 border-t border-slate-700">
+                <button onclick="logout()" class="w-full flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-md transition-colors text-left cursor-pointer">
+                    <i class="fa-solid fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
+            
+            <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm z-10 flex-shrink-0">
+                <h2 class="text-xl font-semibold text-gray-700" id="topbar-title">Dashboard</h2>
+                <div class="flex items-center gap-4">
+                    <span class="text-gray-300 cursor-default"><i class="fa-regular fa-bell"></i></span>
+                    <div class="text-sm text-gray-500 font-medium" id="current-date"></div>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-6 relative" id="views-container">
+                
+                <!-- DASHBOARD VIEW -->
+                <div id="view-dashboard" class="view-section hide space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="dashboard-kpi"></div>
+                    <!-- Minimal chart container to preserve base UI layout -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="dashboard-charts-container">
+                        <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100 hide" id="chart-card">
+                            <h3 class="text-base font-semibold mb-4">Task Distribution</h3>
+                            <div class="relative h-48 w-full"><canvas id="chart-task-status"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AREA REQUESTS VIEW -->
+                <div id="view-area-requests" class="view-section hide space-y-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <input type="text" id="search-ar" placeholder="Search area requests..." class="px-4 py-2 border rounded-md text-sm w-64 focus:outline-none focus:border-blue-500" oninput="renderAreaRequests()">
+                        <button id="btn-add-ar" onclick="openCreateArModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition cursor-pointer hide">
+                            <i class="fa-solid fa-plus mr-1"></i> New Area Request
+                        </button>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-6 py-3 font-semibold text-gray-600">ID / Area Name</th>
+                                    <th class="px-6 py-3 font-semibold text-gray-600">Location</th>
+                                    <th class="px-6 py-3 font-semibold text-gray-600">Status</th>
+                                    <th class="px-6 py-3 font-semibold text-gray-600">Current Owner</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ar-table-body" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- PROJECTS VIEW -->
+                <div id="view-projects" class="view-section hide space-y-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <input type="text" id="search-project" placeholder="Search projects..." class="px-4 py-2 border rounded-md text-sm w-64 focus:outline-none focus:border-blue-500" oninput="renderProjects()">
+                        <button id="btn-add-project" onclick="openCreateProjectModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition cursor-pointer hide">
+                            <i class="fa-solid fa-plus mr-1"></i> New General Project
+                        </button>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-6 py-3 font-semibold text-gray-600">Project</th>
+                                    <th class="px-6 py-3 font-semibold text-gray-600">Status</th>
+                                    <th class="px-6 py-3 font-semibold text-gray-600">Progress</th>
+                                    <th class="px-6 py-3 font-semibold text-gray-600">Target Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projects-table-body" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TASKS VIEW -->
+                <div id="view-tasks" class="view-section hide space-y-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex gap-2">
+                            <input type="text" id="search-task" placeholder="Search tasks..." class="px-4 py-2 border rounded-md text-sm w-64 focus:outline-none focus:border-blue-500" oninput="renderTasks()">
+                            <select id="filter-task-status" class="border rounded-md text-sm px-3 py-2 bg-white" onchange="renderTasks()">
+                                <option value="ALL">All Status</option>
+                                <option value="ASSIGNED">Assigned</option>
+                                <option value="IN PROGRESS">In Progress</option>
+                                <option value="PENDING">Pending</option>
+                                <option value="COMPLETED">Completed</option>
+                            </select>
+                        </div>
+                        <button id="btn-add-task" onclick="openAssignTaskModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition cursor-pointer hide">
+                            <i class="fa-solid fa-plus mr-1"></i> Assign Task
+                        </button>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-6 py-3 font-semibold text-gray-600">Task Name</th>
+                                    <th class="px-6 py-3 font-semibold text-gray-600">Project / Source</th>
+                                    <th class="px-6 py-3 font-semibold text-gray-600">Assignee</th>
+                                    <th class="px-6 py-3 font-semibold text-gray-600">Status</th>
+                                    <th class="px-6 py-3 font-semibold text-gray-600">Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tasks-table-body" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- REPORTS VIEW -->
+                <div id="view-reports" class="view-section hide space-y-6">
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <h3 class="text-lg font-semibold mb-4 border-b pb-2">System Report</h3>
+                        <p class="text-sm text-gray-500">Report views are restricted based on user role metrics from LocalStorage.</p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODALS -->
+
+    <!-- CREATE AREA REQUEST MODAL (SALES ONLY) -->
+    <div id="modal-create-ar" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center hide modal">
+        <div class="bg-white rounded-lg shadow-xl w-[600px] max-w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 flex-shrink-0">
+                <h3 class="text-lg font-bold text-gray-800">New Area Request</h3>
+                <button onclick="closeModal('modal-create-ar')" class="text-gray-400 hover:text-gray-700 cursor-pointer"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Area Name *</label><input type="text" id="ar-name" class="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"></div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">Kecamatan *</label><input type="text" id="ar-kec" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></div>
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">Kabupaten/Kota *</label><input type="text" id="ar-kab" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></div>
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">Provinsi *</label><input type="text" id="ar-prov" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></div>
+                </div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Detail Location / Address *</label><textarea id="ar-detail-loc" rows="2" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></textarea></div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Coordinates * (Format: -7.xxx, 112.xxx)</label><input type="text" id="ar-coord" placeholder="-7.257472, 112.752090" class="w-full border rounded px-3 py-2 text-sm focus:outline-none font-mono"></div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Reason / Opening Potential *</label><textarea id="ar-reason" rows="3" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></textarea></div>
+                <input type="hidden" id="ar-edit-id">
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex-shrink-0">
+                <button onclick="saveAreaRequest()" class="w-full bg-blue-600 text-white font-medium px-4 py-2 rounded hover:bg-blue-700 transition cursor-pointer">Submit Area Request</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AREA REQUEST DETAIL & ACTION MODAL -->
+    <div id="modal-ar-detail" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center hide modal">
+        <div class="bg-white rounded-lg shadow-xl w-[950px] max-w-full max-h-[95vh] flex flex-col overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 flex-shrink-0">
+                <h3 class="text-lg font-bold text-gray-800">Area Request Detail <span id="dar-id" class="text-sm font-normal text-gray-500 ml-2"></span></h3>
+                <button onclick="closeModal('modal-ar-detail')" class="text-gray-400 hover:text-gray-700 cursor-pointer"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
+                <!-- Info Section (Left/Center) -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800" id="dar-name"></h2>
+                            <p class="text-sm text-gray-500">Sales PIC: <span id="dar-sales" class="font-medium text-gray-700"></span></p>
+                        </div>
+                        <div class="text-right">
+                            <div id="dar-status"></div>
+                            <div class="text-xs text-gray-500 mt-1">Owner: <span id="dar-owner" class="font-bold text-gray-800"></span></div>
+                        </div>
+                    </div>
+
+                    <!-- 1. Sales Data -->
+                    <div class="ar-section">
+                        <h4 class="text-sm font-bold text-blue-600 mb-2">1. Sales Submission</h4>
+                        <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-2 bg-gray-50 p-3 rounded border">
+                            <div><span class="block text-[10px] text-gray-400 uppercase tracking-wide">Provinsi</span><span id="dar-prov"></span></div>
+                            <div><span class="block text-[10px] text-gray-400 uppercase tracking-wide">Kabupaten/Kota</span><span id="dar-kab"></span></div>
+                            <div><span class="block text-[10px] text-gray-400 uppercase tracking-wide">Kecamatan</span><span id="dar-kec"></span></div>
+                            <div><span class="block text-[10px] text-gray-400 uppercase tracking-wide">Coordinates</span><span id="dar-coord" class="font-mono text-xs"></span></div>
+                            <div class="col-span-2 mt-1"><span class="block text-[10px] text-gray-400 uppercase tracking-wide">Detail Location</span><span id="dar-loc"></span></div>
+                        </div>
+                        <div class="text-sm text-gray-600"><span class="block text-[10px] text-gray-400 uppercase tracking-wide">Reason / Potential</span><div class="bg-gray-50 p-2 rounded border" id="dar-reason"></div></div>
+                        <div id="dar-sales-revision" class="mt-2 text-sm text-red-600 bg-red-50 p-3 rounded hide border border-red-100">
+                            <strong>Manager Revision Note: </strong><br><span id="dar-sales-revision-text"></span>
+                        </div>
+                    </div>
+
+                    <!-- 2. Drafter Result -->
+                    <div class="ar-section hide" id="section-drafter">
+                        <h4 class="text-sm font-bold text-blue-600 mb-2">2. Drafter Result</h4>
+                        
+                        <div id="dar-drafter-display" class="hide bg-gray-50 p-3 rounded border space-y-2">
+                            <div class="grid grid-cols-3 gap-2 text-sm text-gray-600">
+                                <div><span class="block text-[10px] text-gray-400 uppercase">Total Homepass</span><span id="dar-hp" class="font-bold text-gray-800"></span></div>
+                                <div><span class="block text-[10px] text-gray-400 uppercase">Est. Customers</span><span id="dar-est-cust" class="font-bold text-gray-800"></span></div>
+                                <div><span class="block text-[10px] text-gray-400 uppercase">Tech Coverage / Area Info</span><span id="dar-coverage" class="font-bold text-gray-800"></span></div>
+                            </div>
+                            <div class="text-sm text-gray-600"><span class="block text-[10px] text-gray-400 uppercase">Design Attachment / Ref</span><span id="dar-attachment" class="text-blue-600 font-mono text-xs cursor-pointer hover:underline"></span></div>
+                            <div class="text-sm text-gray-600"><span class="block text-[10px] text-gray-400 uppercase">Drafter Notes</span><div id="dar-drafter-notes"></div></div>
+                        </div>
+                        
+                        <div id="dar-drafter-form" class="hide bg-blue-50 p-4 rounded border border-blue-200 space-y-3">
+                            <p class="text-xs text-blue-800 font-semibold mb-2"><i class="fa-solid fa-pencil"></i> Drafter Work Submission</p>
+                            
+                            <!-- Drafter Revision Alert -->
+                            <div id="dar-drafter-revision" class="mb-3 text-sm text-red-600 bg-red-50 p-3 rounded hide border border-red-100">
+                                <strong>Manager Revision Note: </strong><br><span id="dar-drafter-revision-text"></span>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-3">
+                                <div><label class="block text-[10px] font-semibold text-gray-700">Total Homepass *</label><input type="number" id="in-hp" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></div>
+                                <div><label class="block text-[10px] font-semibold text-gray-700">Est. Customers *</label><input type="number" id="in-est-cust" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></div>
+                                <div><label class="block text-[10px] font-semibold text-gray-700">Tech Coverage / Area Info *</label><input type="text" id="in-coverage" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></div>
+                            </div>
+                            <div><label class="block text-[10px] font-semibold text-gray-700">Area Design Drawing / Image URL *</label><input type="text" id="in-attachment" placeholder="e.g. https://storage/design_v1.pdf" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></div>
+                            <div><label class="block text-[10px] font-semibold text-gray-700">Drafter Notes *</label><textarea id="in-drafter-notes" rows="2" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></textarea></div>
+                            <button onclick="submitDrafterResult()" class="w-full bg-blue-600 text-white text-sm py-2 rounded font-medium hover:bg-blue-700 cursor-pointer">Submit Drafter Result</button>
+                        </div>
+                    </div>
+
+                    <!-- 3. Legal Result -->
+                    <div class="ar-section hide" id="section-legal">
+                        <h4 class="text-sm font-bold text-blue-600 mb-2">3. Legal Result</h4>
+                        
+                        <div id="dar-legal-display" class="hide bg-gray-50 p-3 rounded border space-y-2">
+                            <div class="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                                <div><span class="block text-[10px] text-gray-400 uppercase">Permit Condition / Status</span><span id="dar-permit-status" class="font-bold"></span></div>
+                                <div><span class="block text-[10px] text-gray-400 uppercase">Related Party</span><span id="dar-related-party"></span></div>
+                            </div>
+                            <div class="text-sm text-gray-600 mt-2"><span class="block text-[10px] text-gray-400 uppercase">Estimated Permit Cost</span><span id="dar-est-cost" class="font-bold text-green-600"></span></div>
+                            <div class="text-sm text-gray-600 mt-2"><span class="block text-[10px] text-gray-400 uppercase">Permit Information</span><span id="dar-permit-info"></span></div>
+                            <div class="text-sm text-gray-600"><span class="block text-[10px] text-gray-400 uppercase">Potential Constraints</span><span id="dar-constraints"></span></div>
+                            <div class="text-sm text-gray-600"><span class="block text-[10px] text-gray-400 uppercase">Legal Notes</span><div id="dar-legal-notes"></div></div>
+                        </div>
+                        
+                        <div id="dar-legal-form" class="hide bg-indigo-50 p-4 rounded border border-indigo-200 space-y-3">
+                            <p class="text-xs text-indigo-800 font-semibold mb-2"><i class="fa-solid fa-scale-balanced"></i> Legal Review Submission</p>
+                            
+                            <!-- Legal Revision Alert -->
+                            <div id="dar-legal-revision" class="mb-3 text-sm text-red-600 bg-red-50 p-3 rounded hide border border-red-100">
+                                <strong>Manager / GM Revision Note: </strong><br><span id="dar-legal-revision-text"></span>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div><label class="block text-[10px] font-semibold text-gray-700">Permit Condition *</label>
+                                    <select id="in-permit-status" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none bg-white">
+                                        <option value="CLEAR">CLEAR</option><option value="NEED_PERMIT">NEED PERMIT</option><option value="PENDING">PENDING</option><option value="NOT_RECOMMENDED">NOT RECOMMENDED</option>
+                                    </select>
+                                </div>
+                                <div><label class="block text-[10px] font-semibold text-gray-700">Related Party / Inst.</label><input type="text" id="in-related-party" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></div>
+                            </div>
+                            <div class="mt-1"><label class="block text-[10px] font-semibold text-gray-700">Estimated Permit Cost (Rp) *</label><input type="number" id="in-est-cost" placeholder="e.g. 5000000" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none" min="0"></div>
+                            <div><label class="block text-[10px] font-semibold text-gray-700">Permit Information *</label><input type="text" id="in-permit-info" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></div>
+                            <div><label class="block text-[10px] font-semibold text-gray-700">Potential Constraints</label><input type="text" id="in-constraints" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></div>
+                            <div><label class="block text-[10px] font-semibold text-gray-700">Legal Notes *</label><textarea id="in-legal-notes" rows="2" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></textarea></div>
+                            <div id="dar-legal-btn-container">
+                                <button onclick="submitLegalResult()" class="w-full bg-indigo-600 text-white text-sm py-2 rounded font-medium hover:bg-indigo-700 cursor-pointer">Submit Legal Result</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Project Preparation & Summary -->
+                    <div class="ar-section hide" id="section-preparation">
+                        <h4 class="text-sm font-bold text-blue-600 mb-2">4. Project Preparation & Costing</h4>
+                        
+                        <!-- Technical Revision Alert -->
+                        <div id="dar-manager-tech-revision" class="mb-3 text-sm text-red-600 bg-red-50 p-3 rounded hide border border-red-100">
+                            <strong>GM Technical Revision Required: </strong><br><span id="dar-tech-revision-text"></span>
+                        </div>
+
+                        <div id="dar-prep-content" class="space-y-4"></div>
+                    </div>
+
+                    <!-- ACTION PANELS -->
+                    <div id="dar-manager-actions" class="hide bg-yellow-50 border border-yellow-300 p-4 rounded mt-4">
+                        <h4 class="text-sm font-bold text-gray-800 mb-3 border-b border-yellow-200 pb-1"><i class="fa-solid fa-gavel"></i> Manager Decision</h4>
+                        
+                        <!-- Form for Drafter Assignment -->
+                        <div id="mgr-form-drafter" class="hide space-y-3 mb-3">
+                            <div class="grid grid-cols-1 gap-3">
+                                <div><label class="block text-xs font-semibold text-gray-700">Assign Drafter</label><select id="mgr-drafter-sel" class="w-full text-sm border rounded px-2 py-1.5 bg-white"></select></div>
+                            </div>
+                        </div>
+                        
+                        <div id="mgr-note-container"><label class="block text-xs font-semibold text-gray-700 mb-1">Manager Note (Required for Returns)</label><input type="text" id="mgr-note" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none" placeholder="Instruction or reason..."></div>
+                        
+                        <div class="flex flex-wrap gap-2 mt-4" id="mgr-btn-container"></div>
+                    </div>
+
+                    <div id="dar-sales-actions" class="hide mt-4">
+                        <button onclick="editReturnedAR()" class="w-full bg-orange-500 text-white font-bold px-4 py-3 rounded shadow hover:bg-orange-600 transition cursor-pointer">Edit & Resubmit Request</button>
+                    </div>
+                </div>
+
+                <!-- Right Col: History -->
+                <div class="lg:col-span-1 border-l pl-6 space-y-4">
+                    <h4 class="text-sm font-semibold text-gray-700 mb-2 border-b pb-2">Activity History</h4>
+                    <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2" id="dar-history"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CREATE PROJECT MODAL (Manager - Separated for non-area manual project legacy support) -->
+    <div id="modal-create-project" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center hide modal">
+        <div class="bg-white rounded-lg shadow-xl w-[500px] max-w-full overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold text-gray-800">New General Project (Non-Area)</h3>
+                <button onclick="closeModal('modal-create-project')" class="text-gray-400 hover:text-gray-700 cursor-pointer"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-[10px] font-semibold text-orange-600 mb-2 bg-orange-50 border border-orange-200 p-2 rounded">
+                    Notice: Generic project creation.
+                </p>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Project Name *</label><input type="text" id="cp-name" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Client Ref *</label><input type="text" id="cp-client" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">SPV *</label><select id="cp-spv" class="w-full border rounded px-3 py-2 text-sm bg-white"></select></div>
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">Target Date *</label><input type="date" id="cp-target" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></div>
+                </div>
+                <div class="pt-2"><button onclick="saveNewProject()" class="w-full bg-blue-600 text-white font-medium px-4 py-2 rounded hover:bg-blue-700 transition cursor-pointer">Create General Project</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ASSIGN TASK MODAL -->
+    <div id="modal-assign-task" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center hide modal">
+        <div class="bg-white rounded-lg shadow-xl w-[550px] max-w-full overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 flex-shrink-0">
+                <h3 class="text-lg font-bold text-gray-800">Assign New Task / Work Activity</h3>
+                <button onclick="closeModal('modal-assign-task')" class="text-gray-400 hover:text-gray-700 cursor-pointer"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Target Project *</label><select id="ct-project" class="w-full border rounded px-3 py-2 text-sm bg-white"></select></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Task Type *</label>
+                        <select id="ct-type" class="w-full border rounded px-3 py-2 text-sm bg-white">
+                            <option value="GENERAL">General Work</option>
+                            <option value="POLE_INSTALLATION">Pole Installation</option>
+                            <option value="CABLE_PULLING">Cable Pulling</option>
+                            <option value="ODP_INSTALLATION">ODP Installation</option>
+                            <option value="OTHER">Other</option>
+                        </select>
+                    </div>
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">Task Name *</label><input type="text" id="ct-name" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></div>
+                </div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Description</label><textarea id="ct-desc" rows="2" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></textarea></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">Assign To *</label><select id="ct-assignee" class="w-full border rounded px-3 py-2 text-sm bg-white"></select></div>
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">Priority</label>
+                        <select id="ct-priority" class="w-full border rounded px-3 py-2 text-sm bg-white">
+                            <option value="HIGH">High</option><option value="MEDIUM" selected>Medium</option><option value="LOW">Low</option>
+                        </select>
+                    </div>
+                </div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Deadline *</label><input type="date" id="ct-deadline" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></div>
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex-shrink-0">
+                <button onclick="saveNewTask()" class="w-full bg-blue-600 text-white font-medium px-4 py-2 rounded hover:bg-blue-700 transition cursor-pointer">Assign Task</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROJECT DETAIL MODAL -->
+    <div id="modal-project-detail" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center hide modal">
+        <div class="bg-white rounded-lg shadow-xl w-[700px] max-w-full max-h-[85vh] flex flex-col overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 flex-shrink-0">
+                <h3 class="text-lg font-bold text-gray-800">Project Detail <span id="dp-id" class="text-sm font-normal text-gray-500 ml-2"></span></h3>
+                <button onclick="closeModal('modal-project-detail')" class="text-gray-400 hover:text-gray-700 cursor-pointer"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 space-y-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800" id="dp-name"></h2>
+                        <p class="text-sm text-gray-500 mb-2">Area/Client Ref: <span id="dp-client" class="font-medium text-gray-700"></span></p>
+                        <div id="dp-status"></div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-500">Target Date: <span id="dp-target" class="font-bold text-gray-800"></span></p>
+                        <div class="mt-3 text-left bg-gray-50 border p-3 rounded-md">
+                            <div class="flex justify-between text-xs font-semibold text-gray-600 mb-1"><span>Overall Progress</span><span id="dp-progress-text"></span></div>
+                            <div class="w-full bg-gray-200 rounded-full h-2"><div id="dp-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold mb-3 border-b pb-1 text-gray-700">Work Activities (Visible to You)</h3>
+                    <div class="bg-white rounded border overflow-hidden">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-gray-50 border-b"><tr><th class="px-4 py-2 font-semibold">Task Name</th><th class="px-4 py-2 font-semibold">Assignee</th><th class="px-4 py-2 font-semibold">Status</th></tr></thead>
+                            <tbody id="dp-tasks-body" class="divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TASK DETAIL MODAL -->
+    <div id="modal-task-detail" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center hide modal">
+        <div class="bg-white rounded-lg shadow-xl w-[900px] max-w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 flex-shrink-0">
+                <h3 class="text-lg font-bold text-gray-800">Task Detail <span id="dt-id" class="text-sm font-normal text-gray-500 ml-2"></span></h3>
+                <button onclick="closeModal('modal-task-detail')" class="text-gray-400 hover:text-gray-700 cursor-pointer"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Left Col -->
+                <div class="md:col-span-2 space-y-6">
+                    <div>
+                        <h2 class="text-2xl font-bold mb-1 text-gray-800" id="dt-name">Task Name</h2>
+                        <p class="text-sm text-blue-600 font-medium" id="dt-project">Project Name</p>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-700 mb-2">Description</h4>
+                        <p class="text-sm text-gray-600 bg-gray-50 p-3 rounded border whitespace-pre-wrap" id="dt-desc"></p>
+                    </div>
+                    
+                    <!-- SPECIAL POLE INSTALLATION DOCS -->
+                    <div id="dt-pole-section" class="hide border-2 border-indigo-300 bg-indigo-50 p-4 rounded-lg">
+                        <h4 class="text-sm font-bold text-indigo-900 mb-1"><i class="fa-solid fa-tower-cell"></i> PENANAMAN TIANG DOCUMENTATION</h4>
+                        <p class="text-[10px] text-indigo-700 mb-3 font-semibold">Completion requires all validation criteria below to be strictly met.</p>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Inputs -->
+                            <div class="space-y-3">
+                                <div class="grid grid-cols-3 gap-2">
+                                    <div><label class="block text-[10px] font-semibold text-gray-700">Depth (cm)</label><input type="number" id="pl-depth" oninput="updatePoleChecklist()" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></div>
+                                    <div><label class="block text-[10px] font-semibold text-gray-700">Con. Dia (cm)</label><input type="number" id="pl-dia" oninput="updatePoleChecklist()" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></div>
+                                    <div><label class="block text-[10px] font-semibold text-gray-700">Dist. Ref (cm)</label><input type="number" id="pl-dist" oninput="updatePoleChecklist()" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></div>
+                                </div>
+                                <div><label class="block text-[10px] font-semibold text-gray-700">Coords (-7.xxx, 112.xxx)</label><input type="text" id="pl-coord" oninput="updatePoleChecklist()" placeholder="-7.257, 112.752" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none font-mono"></div>
+                                <div>
+                                    <label class="block text-[10px] font-semibold text-gray-700 mb-1">Waterpass Photo *</label>
+                                    <input type="file" id="pl-photo-file" accept="image/*" class="w-full text-xs" onchange="handlePhotoUpload(event)">
+                                    <input type="hidden" id="pl-photo-data">
+                                </div>
+                            </div>
+                            <!-- Live Checklist -->
+                            <div class="bg-white border rounded p-3 flex flex-col justify-start">
+                                <span class="text-[10px] font-bold text-gray-500 mb-2 uppercase border-b pb-1">Validation Checklist</span>
+                                <div id="chk-depth" class="checklist-item invalid"><i class="fa-solid fa-xmark w-4 text-center"></i> <span>Planting Depth<br><span class="text-[9px] text-gray-500">Std: 140 CM | Act: - | <b class="text-red-600">FAIL</b></span></span></div>
+                                <div id="chk-dia" class="checklist-item invalid"><i class="fa-solid fa-xmark w-4 text-center"></i> <span>Concrete Diameter<br><span class="text-[9px] text-gray-500">Std: 20 CM | Act: - | <b class="text-red-600">FAIL</b></span></span></div>
+                                <div id="chk-dist" class="checklist-item invalid"><i class="fa-solid fa-xmark w-4 text-center"></i> <span>Concrete Distance<br><span class="text-[9px] text-gray-500">Std: 10 CM | Act: - | <b class="text-red-600">FAIL</b></span></span></div>
+                                <div id="chk-coord" class="checklist-item invalid"><i class="fa-solid fa-xmark w-4 text-center"></i> <span>Coordinates Required<br><span class="text-[9px] text-gray-500">Act: None | <b class="text-red-600">FAIL</b></span></span></div>
+                                <div id="chk-photo" class="checklist-item invalid"><i class="fa-solid fa-xmark w-4 text-center"></i> <span>Waterpass Photo Required<br><span class="text-[9px] text-gray-500">Val: <b class="text-red-600">FAIL</b></span></span></div>
+                            </div>
+                        </div>
+                        <div id="pl-validation-msg" class="text-xs font-bold text-red-600 mt-3 p-2 bg-red-50 border border-red-200 rounded hide"></div>
+                    </div>
+
+                    <!-- Update Progress Form -->
+                    <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                        <h4 class="text-sm font-semibold text-blue-900 mb-3">Update Task Progress & Status</h4>
+                        <div class="flex gap-4 mb-4">
+                            <div class="flex-1">
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Status</label>
+                                <select id="dt-input-status" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none bg-white">
+                                    <option value="ASSIGNED">Assigned</option><option value="IN PROGRESS">In Progress</option><option value="PENDING">Pending</option><option value="COMPLETED">Completed</option>
+                                </select>
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Progress (%)</label>
+                                <input type="number" id="dt-input-progress" min="0" max="100" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none">
+                            </div>
+                        </div>
+                        <div class="mb-3"><label class="block text-xs font-semibold text-gray-700 mb-1">Add Note / Link</label><input type="text" id="dt-input-note" class="w-full text-sm border rounded px-2 py-1.5 focus:outline-none"></div>
+                        <button onclick="saveTaskUpdate()" class="bg-blue-600 text-white text-sm px-4 py-2 rounded font-medium hover:bg-blue-700 w-full transition cursor-pointer">Save Task Update</button>
+                    </div>
+                </div>
+                <!-- Right Col -->
+                <div class="md:col-span-1 space-y-4">
+                    <div class="bg-gray-50 p-4 rounded border text-sm space-y-3 shadow-sm">
+                        <div><span class="block text-[10px] uppercase font-semibold text-gray-500">Assignee</span><span class="font-medium text-gray-800" id="dt-assignee"></span></div>
+                        <div><span class="block text-[10px] uppercase font-semibold text-gray-500 mb-0.5">Priority</span><span id="dt-priority"></span></div>
+                        <div><span class="block text-[10px] uppercase font-semibold text-gray-500">Deadline</span><span id="dt-deadline" class="font-medium"></span></div>
+                        <div><span class="block text-[10px] uppercase font-semibold text-gray-500 mb-0.5">Current Status</span><span id="dt-status"></span></div>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-700 mb-2">Progress</h4>
+                        <div class="w-full bg-gray-200 rounded-full h-4 mb-1 overflow-hidden">
+                            <div id="dt-progress-bar" class="bg-green-500 h-4 rounded-full text-[10px] text-white text-center leading-4 font-bold transition-all" style="width: 0%">0%</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-700 mb-2 border-b pb-1">Task History</h4>
+                        <div class="space-y-3 max-h-[40vh] overflow-y-auto pr-1" id="dt-history"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ADD PREPARATION ITEM (PATCH 3 & 3B) -->
+    <div id="modal-add-prep-item" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-[60] flex items-center justify-center hide modal">
+        <div class="bg-white rounded-lg shadow-xl w-[500px] max-w-full overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold text-gray-800" id="prep-modal-title">Add Item</h3>
+                <button onclick="closeModal('modal-add-prep-item')" class="text-gray-400 hover:text-gray-700 cursor-pointer"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                <input type="hidden" id="prep-category">
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1" id="lbl-prep-name">Item Name *</label><input type="text" id="prep-name" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1" id="lbl-prep-desc">Specification / Description</label><input type="text" id="prep-desc" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></div>
+                
+                <div class="grid grid-cols-2 gap-3" id="prep-qty-unit-row">
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1" id="lbl-prep-qty">Quantity</label><input type="number" id="prep-qty" class="w-full border rounded px-3 py-2 text-sm focus:outline-none" min="1" value="1"></div>
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1" id="lbl-prep-unit">Unit</label><input type="text" id="prep-unit" class="w-full border rounded px-3 py-2 text-sm focus:outline-none" placeholder="e.g. meter, pcs"></div>
+                </div>
+
+                <!-- EXCLUSIVE FOR LABOR (PATCH 3B FIX) -->
+                <div class="grid grid-cols-2 gap-3 hide" id="prep-labor-work-row">
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">Work Quantity *</label><input type="number" id="prep-work-qty" class="w-full border rounded px-3 py-2 text-sm focus:outline-none" min="1" value="1" oninput="calcLaborTotal()"></div>
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">Unit Wage (Rp) *</label><input type="number" id="prep-unit-wage" class="w-full border rounded px-3 py-2 text-sm focus:outline-none" min="0" oninput="calcLaborTotal()"></div>
+                </div>
+                
+                <div id="prep-price-row">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1" id="lbl-prep-price">Estimated Cost / Unit Price (Rp)</label>
+                    <input type="number" id="prep-price" class="w-full border rounded px-3 py-2 text-sm focus:outline-none" min="0">
+                </div>
+
+                <div class="flex items-center gap-2 mt-2 hide" id="prep-sourcing-row">
+                    <input type="checkbox" id="prep-sourcing" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <label class="text-xs font-bold text-gray-700">Requires Sourcing from Purchasing</label>
+                </div>
+                
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Notes</label><textarea id="prep-notes" rows="2" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></textarea></div>
+                <div class="pt-2"><button onclick="savePrepItem()" class="w-full bg-blue-600 text-white font-medium px-4 py-2 rounded hover:bg-blue-700 transition cursor-pointer">Save Item</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ADD QUOTE (PURCHASING) -->
+    <div id="modal-add-quote" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-[60] flex items-center justify-center hide modal">
+        <div class="bg-white rounded-lg shadow-xl w-[400px] max-w-full overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold text-gray-800">Add Supplier Quotation</h3>
+                <button onclick="closeModal('modal-add-quote')" class="text-gray-400 hover:text-gray-700 cursor-pointer"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="quote-item-id">
+                <div class="bg-gray-50 p-2 text-xs font-semibold text-gray-600 rounded border mb-2" id="quote-item-name"></div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Supplier Name *</label><input type="text" id="quote-supplier" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">Unit Price (Rp) *</label><input type="number" id="quote-price" class="w-full border rounded px-3 py-2 text-sm focus:outline-none" min="0" oninput="calcQuoteTotal()"></div>
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1">Quantity *</label><input type="number" id="quote-qty" class="w-full border rounded px-3 py-2 text-sm focus:outline-none bg-gray-100" min="1" readonly></div>
+                </div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Total Price (Rp)</label><input type="text" id="quote-total" class="w-full border rounded px-3 py-2 text-sm font-bold bg-gray-50 text-green-600" readonly></div>
+                <div><label class="block text-xs font-semibold text-gray-600 mb-1">Supplier Notes</label><input type="text" id="quote-notes" class="w-full border rounded px-3 py-2 text-sm focus:outline-none"></div>
+                <div class="pt-2"><button onclick="saveQuote()" class="w-full bg-indigo-600 text-white font-medium px-4 py-2 rounded hover:bg-indigo-700 transition cursor-pointer">Save Quotation</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-4 right-4 text-white px-4 py-3 rounded shadow-lg transform transition-transform translate-y-20 opacity-0 z-50 text-sm flex items-center gap-2 font-medium">
+        <i class="fa-solid fa-circle-info" id="toast-icon"></i> <span id="toast-msg">Success</span>
+    </div>
+
+    <script>
+        /** ==========================================
+         * 0. STRICT STORAGE HANDLING & NAMESPACES
+         * ========================================== */
+        const NS_USERS = 'projectflow_users';
+        const NS_PROJECTS = 'projectflow_projects';
+        const NS_TASKS = 'projectflow_tasks';
+        const NS_CURRENT = 'projectflow_current_user';
+        const NS_AR = 'projectflow_area_requests';
+
+        const initialUsers = [
+            { id: 'U1', name: 'Manager Teknis', role: 'MANAGER' },
+            { id: 'U2', name: 'SPV Alpha', role: 'SPV' },
+            { id: 'U3', name: 'SPV Beta', role: 'SPV' },
+            { id: 'U4', name: 'Drafter One', role: 'DRAFTER' },
+            { id: 'U5', name: 'Drafter Two', role: 'DRAFTER' },
+            { id: 'sales-1', name: 'Sales One', role: 'SALES' },
+            { id: 'legal-1', name: 'Legal One', role: 'LEGAL' },
+            { id: 'pur-1', name: 'Purchasing Staff', role: 'PURCHASING' },
+            { id: 'gm-1', name: 'General Manager', role: 'GENERAL_MANAGER' }
+        ];
+
+        // Seed data separated by ProjectId vs AreaRequestId logic
+        const initialAR = [
+            {
+                id: 'AR-001', salesUserId: 'sales-1', salesName: 'Sales One', areaName: 'New Area CBD', kecamatan: 'Gubeng', kabupaten: 'Surabaya', provinsi: 'Jawa Timur', detailLocation: 'Jl. Pemuda No 1', coordinates: '-7.2651, 112.7501', reasonPotential: 'High traffic corporate area', 
+                status: 'READY_FOR_NEXT_STAGE', currentOwner: 'MANAGER', drafterId: 'U4', managerNotes: 'Assigned immediately', salesRevisionNotes: '', drafterRevisionNotes: '', legalRevisionNotes: '', purchasingRevisionNotes: '',
+                drafterResult: { totalHomepass: 150, estimatedCust: 80, technicalCoverage: 'CBD Sector 1, 80 buildings', attachment: 'https://cdn.example.com/cbd_design.pdf', notes: 'Design feasible and checked.' },
+                legalResult: { permitStatus: 'CLEAR', relatedParty: 'Pemkot', estimatedPermitCost: 2000000, permitInformation: 'Available', potentialConstraints: 'None', legalNotes: 'All clear' },
+                projectPreparation: null, projectId: null, gmApproval: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+                history: [
+                    { timestamp: new Date(Date.now() - 86400000 * 2).toISOString(), actor: 'Sales One', role: 'SALES', action: 'Area Request Submitted', note: '' }, 
+                    { timestamp: new Date(Date.now() - 86400000).toISOString(), actor: 'Manager Teknis', role: 'MANAGER', action: 'Assigned to Drafter (PENDING_MANAGER_REVIEW ➔ ASSIGNED_TO_DRAFTER)', note: 'Assigned immediately' },
+                    { timestamp: new Date(Date.now() - 3600000).toISOString(), actor: 'Drafter One', role: 'DRAFTER', action: 'Drafter Result Submitted (ASSIGNED_TO_DRAFTER ➔ PENDING_MANAGER_DRAFTER_REVIEW)', note: 'Completed drafting phase' },
+                    { timestamp: new Date(Date.now() - 1800000).toISOString(), actor: 'Manager Teknis', role: 'MANAGER', action: 'Sent to Legal (PENDING_MANAGER_DRAFTER_REVIEW ➔ ASSIGNED_TO_LEGAL)', note: 'Checked' },
+                    { timestamp: new Date(Date.now() - 900000).toISOString(), actor: 'Legal One', role: 'LEGAL', action: 'Legal Result Submitted (ASSIGNED_TO_LEGAL ➔ PENDING_MANAGER_LEGAL_REVIEW)', note: 'Permit is clear' },
+                    { timestamp: new Date(Date.now() - 100000).toISOString(), actor: 'Manager Teknis', role: 'MANAGER', action: 'Marked Ready for Next Stage (PENDING_MANAGER_LEGAL_REVIEW ➔ READY_FOR_NEXT_STAGE)', note: 'Proceed to prep' }
+                ]
+            }
+        ];
+
+        const initialTasks = [
+            { id: 'T002', projectId: 'P1', areaRequestId: null, taskType: 'POLE_INSTALLATION', name: 'Pole Install Sector A', desc: 'Install standard pole', assignee: 'U2', priority: 'HIGH', deadline: '2026-09-20', status: 'ASSIGNED', progress: 0, history: [] }
+        ];
+
+        const initialProjects = [
+            { id: 'P1', areaRequestId: null, name: 'Tower Alpha Construction', client: 'Telco Inc', status: 'ON PROGRESS', progress: 0, targetDate: '2026-10-01', spvId: 'U2', priority: 'HIGH', managerNote: '' }
+        ];
+
+        function initData() {
+            let existingUsers = JSON.parse(localStorage.getItem(NS_USERS));
+            if(!existingUsers || !existingUsers.some(u => u.role === 'SALES') || !existingUsers.some(u => u.role === 'PURCHASING') || !existingUsers.some(u => u.role === 'GENERAL_MANAGER')) {
+                localStorage.setItem(NS_USERS, JSON.stringify(initialUsers));
+            }
+            if(!localStorage.getItem(NS_AR)) localStorage.setItem(NS_AR, JSON.stringify(initialAR));
+            if(!localStorage.getItem(NS_TASKS)) localStorage.setItem(NS_TASKS, JSON.stringify(initialTasks));
+            if(!localStorage.getItem(NS_PROJECTS)) localStorage.setItem(NS_PROJECTS, JSON.stringify(initialProjects));
+            updateProjectsProgress();
+        }
+
+        function resetData() {
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                if (localStorage.key(i).startsWith('projectflow_')) keysToRemove.push(localStorage.key(i));
+            }
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+            initData();
+            window.location.reload();
+        }
+
+        /** ==========================================
+         * 1. AUTHENTICATION & STATE
+         * ========================================== */
+        let currentUser = null;
+        let activeView = 'dashboard';
+        let charts = {};
+        let currentDetailTaskId = null;
+        let currentDetailArId = null;
+
+        function renderLogin() {
+            const users = JSON.parse(localStorage.getItem(NS_USERS));
+            document.getElementById('login-buttons').innerHTML = users.map(u => `
+                <button onclick="login('${u.id}')" class="w-full text-left px-4 py-3 bg-gray-50 hover:bg-blue-50 border border-gray-200 rounded transition flex justify-between items-center cursor-pointer">
+                    <div><span class="block font-semibold text-gray-800">${u.name}</span><span class="text-xs text-blue-600 font-bold tracking-wide">${u.role}</span></div>
+                    <i class="fa-solid fa-chevron-right text-gray-400"></i>
+                </button>`).join('');
+        }
+
+        function login(userId) {
+            const users = JSON.parse(localStorage.getItem(NS_USERS));
+            currentUser = users.find(u => u.id === userId);
+            localStorage.setItem(NS_CURRENT, JSON.stringify(currentUser));
+            document.getElementById('login-view').classList.add('hide');
+            document.getElementById('app-view').classList.remove('hide');
+            setupApp();
+        }
+
+        function logout() { localStorage.removeItem(NS_CURRENT); window.location.reload(); }
+
+        function checkAuth() {
+            initData();
+            const stored = localStorage.getItem(NS_CURRENT);
+            if (stored) {
+                currentUser = JSON.parse(stored);
+                document.getElementById('login-view').classList.add('hide');
+                document.getElementById('app-view').classList.remove('hide');
+                setupApp();
+            } else { renderLogin(); }
+        }
+
+        /** ==========================================
+         * 2. STRICT DATA VISIBILITY RULES
+         * ========================================== */
+        function getRawTasks() { return JSON.parse(localStorage.getItem(NS_TASKS)) || []; }
+        function getRawProjects() { return JSON.parse(localStorage.getItem(NS_PROJECTS)) || []; }
+        function getRawUsers() { return JSON.parse(localStorage.getItem(NS_USERS)) || []; }
+        function getRawAR() { return JSON.parse(localStorage.getItem(NS_AR)) || []; }
+        
+        function getVisibleAR() {
+            const ars = getRawAR();
+            if (currentUser.role === 'MANAGER' || currentUser.role === 'GENERAL_MANAGER') return ars;
+            if (currentUser.role === 'SALES') return ars.filter(a => a.salesUserId === currentUser.id);
+            if (currentUser.role === 'DRAFTER') return ars.filter(a => a.drafterId === currentUser.id);
+            if (currentUser.role === 'LEGAL') {
+                return ars.filter(a => ['ASSIGNED_TO_LEGAL', 'RETURNED_TO_LEGAL', 'PENDING_MANAGER_LEGAL_REVIEW', 'READY_FOR_NEXT_STAGE', 'PREPARATION_IN_PROGRESS', 'PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'COMPLETED'].includes(a.status) || a.legalResult !== null || ['LEGAL_REVIEW', 'WAITING_MANAGER_FINAL_REVIEW', 'PROJECT_ASSIGNED', 'ON_PROJECT'].includes(a.status));
+            }
+            if (currentUser.role === 'PURCHASING') {
+                return ars.filter(a => ['PENDING_PURCHASING_SOURCING', 'RETURNED_TO_PURCHASING', 'PENDING_MANAGER_COST_REVIEW', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'COMPLETED'].includes(a.status) || a.currentOwner === 'PURCHASING');
+            }
+            return []; // SPV does not access AR directly
+        }
+
+        function getVisibleProjects() {
+            const projects = getRawProjects();
+            if (currentUser.role === 'MANAGER' || currentUser.role === 'GENERAL_MANAGER') return projects;
+            if (currentUser.role === 'SPV') return projects.filter(p => p.spvId === currentUser.id);
+            return []; // Others don't access Projects directly
+        }
+
+        function getVisibleTasks() {
+            const tasks = getRawTasks();
+            if (currentUser.role === 'MANAGER' || currentUser.role === 'GENERAL_MANAGER') return tasks;
+            if (currentUser.role === 'DRAFTER') return tasks.filter(t => t.assignee === currentUser.id);
+            if (currentUser.role === 'SPV') {
+                const pIds = getVisibleProjects().map(p => p.id);
+                return tasks.filter(t => t.assignee === currentUser.id || (t.projectId && pIds.includes(t.projectId)));
+            }
+            return tasks.filter(t => t.assignee === currentUser.id);
+        }
+
+        function isOverdue(obj) {
+            const status = obj.status;
+            if (status === 'COMPLETED' || status === 'CLOSED' || status === 'REJECTED' || status === 'CANCELLED' || status.startsWith('READY_FOR')) return false;
+            const target = obj.deadline || obj.targetDate;
+            if(!target) return false;
+            const today = new Date(); today.setHours(0,0,0,0);
+            return new Date(target) < today;
+        }
+
+        // Project Completion Logic updates AR dynamically
+        function updateProjectsProgress() {
+            const projects = getRawProjects();
+            const tasks = getRawTasks();
+            const ars = getRawAR();
+            let arUpdated = false;
+
+            projects.forEach(p => {
+                const pTasks = tasks.filter(t => t.projectId === p.id);
+                if (pTasks.length === 0) p.progress = 0;
+                else {
+                    const sum = pTasks.reduce((acc, t) => acc + parseInt(t.progress || 0), 0);
+                    p.progress = Math.round(sum / pTasks.length) || 0; 
+                }
+                
+                if(p.progress === 100 && pTasks.length > 0 && pTasks.every(t => t.status === 'COMPLETED') && p.status !== 'COMPLETED') {
+                    p.status = 'COMPLETED';
+                    if (p.areaRequestId) {
+                        const ar = ars.find(a => a.id === p.areaRequestId);
+                        if(ar && ar.status !== 'COMPLETED') {
+                            ar.status = 'COMPLETED';
+                            ar.currentOwner = 'NONE';
+                            ar.history.push({ timestamp: new Date().toISOString(), actor: 'System', role: 'SYSTEM', action: 'Project Completed', note: 'Project execution 100% completed' });
+                            ar.history.push({ timestamp: new Date().toISOString(), actor: 'System', role: 'SYSTEM', action: 'Area Request Completed', note: 'All workflow stages finalized' });
+                            arUpdated = true;
+                        }
+                    }
+                }
+            });
+            localStorage.setItem(NS_PROJECTS, JSON.stringify(projects));
+            if(arUpdated) localStorage.setItem(NS_AR, JSON.stringify(ars));
+        }
+
+        /** ==========================================
+         * 3. UI SETUP & NAVIGATION
+         * ========================================== */
+        const menuConfig = {
+            MANAGER: [
+                { id: 'dashboard', icon: 'fa-chart-pie', label: 'Dashboard' },
+                { id: 'area-requests', icon: 'fa-map-marked-alt', label: 'Area Requests' },
+                { id: 'projects', icon: 'fa-folder-open', label: 'Projects' },
+                { id: 'tasks', icon: 'fa-tasks', label: 'Tasks' },
+                { id: 'reports', icon: 'fa-chart-bar', label: 'Reports' }
+            ],
+            SALES: [
+                { id: 'dashboard', icon: 'fa-chart-pie', label: 'Dashboard' },
+                { id: 'area-requests', icon: 'fa-map-marked-alt', label: 'Area Requests' }
+            ],
+            DRAFTER: [
+                { id: 'dashboard', icon: 'fa-chart-pie', label: 'Dashboard' },
+                { id: 'area-requests', icon: 'fa-map-marked-alt', label: 'My Assignments' },
+                { id: 'tasks', icon: 'fa-tasks', label: 'My Tasks' }
+            ],
+            LEGAL: [
+                { id: 'dashboard', icon: 'fa-chart-pie', label: 'Dashboard' },
+                { id: 'area-requests', icon: 'fa-balance-scale', label: 'Legal Reviews' }
+            ],
+            SPV: [
+                { id: 'dashboard', icon: 'fa-chart-pie', label: 'Dashboard' },
+                { id: 'projects', icon: 'fa-folder-open', label: 'My Projects' },
+                { id: 'tasks', icon: 'fa-tasks', label: 'My Tasks' }
+            ],
+            PURCHASING: [
+                { id: 'dashboard', icon: 'fa-chart-pie', label: 'Purchasing Dashboard' },
+                { id: 'area-requests', icon: 'fa-boxes-packing', label: 'Sourcing Requests' },
+                { id: 'tasks', icon: 'fa-tasks', label: 'My Tasks' }
+            ],
+            GENERAL_MANAGER: [
+                { id: 'dashboard', icon: 'fa-chart-pie', label: 'GM Dashboard' },
+                { id: 'area-requests', icon: 'fa-map-marked-alt', label: 'Area Requests' },
+                { id: 'projects', icon: 'fa-folder-open', label: 'Projects Overview' },
+                { id: 'tasks', icon: 'fa-tasks', label: 'Tasks Overview' },
+                { id: 'reports', icon: 'fa-chart-bar', label: 'Reports' }
+            ]
+        };
+
+        function setupApp() {
+            document.getElementById('user-initial').textContent = currentUser.name.charAt(0);
+            document.getElementById('user-name').textContent = currentUser.name;
+            document.getElementById('user-role').textContent = currentUser.role;
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date').textContent = new Date().toLocaleDateString('id-ID', options);
+
+            // Hide/Show Buttons based on Role safely
+            document.getElementById('btn-add-project').classList.toggle('hide', currentUser.role !== 'MANAGER');
+            document.getElementById('btn-add-task').classList.toggle('hide', !(currentUser.role === 'MANAGER' || currentUser.role === 'SPV'));
+            document.getElementById('btn-add-ar').classList.toggle('hide', currentUser.role !== 'SALES');
+
+            renderSidebar();
+            navigate('dashboard');
+        }
+
+        function renderSidebar() {
+            const menus = menuConfig[currentUser.role];
+            document.getElementById('sidebar-menu').innerHTML = menus.map(m => `
+                <button onclick="navigate('${m.id}')" id="menu-${m.id}" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors text-slate-300 hover:text-white hover:bg-slate-800 text-left cursor-pointer">
+                    <i class="fa-solid ${m.icon} w-5 text-center"></i> ${m.label}
+                </button>`).join('');
+        }
+
+        function navigate(view) {
+            activeView = view;
+            document.querySelectorAll('#sidebar-menu button').forEach(el => {
+                el.classList.remove('bg-blue-600', 'text-white'); el.classList.add('text-slate-300');
+            });
+            const activeMenu = document.getElementById(`menu-${view}`);
+            if(activeMenu) {
+                activeMenu.classList.remove('text-slate-300', 'hover:bg-slate-800');
+                activeMenu.classList.add('bg-blue-600', 'text-white');
+                document.getElementById('topbar-title').textContent = activeMenu.innerText.trim();
+            }
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hide'));
+            const viewEl = document.getElementById(`view-${view}`);
+            if(viewEl) viewEl.classList.remove('hide');
+            
+            if (view === 'dashboard') renderDashboard();
+            if (view === 'projects') renderProjects();
+            if (view === 'tasks') renderTasks();
+            if (view === 'area-requests') renderAreaRequests();
+        }
+
+        /** ==========================================
+         * 4. RENDERERS & UTILS
+         * ========================================== */
+        const getStatusBadge = (status) => {
+            let color = 'bg-gray-100 text-gray-700 border-gray-200';
+            if(status.includes('COMPLETED') || status === 'CLEAR' || status.startsWith('READY_FOR')) color = 'bg-green-100 text-green-700 border-green-200';
+            else if(status.includes('PROGRESS') || status.includes('ASSIGNED_TO') || status === 'ON_PROJECT' || status === 'PROJECT_ASSIGNED') color = 'bg-blue-100 text-blue-700 border-blue-200';
+            else if(status.includes('WAITING') || status.includes('PENDING_MANAGER') || status.includes('PENDING_PURCHASING') || status === 'SUBMITTED' || status.includes('REVIEW')) color = 'bg-purple-100 text-purple-700 border-purple-200';
+            else if(status.includes('RETURNED') || status === 'PENDING' || status === 'NEED_PERMIT' || status === 'DRAFTER_ASSIGNED' || status === 'ASSIGNED') color = 'bg-orange-100 text-orange-700 border-orange-200';
+            else if(status === 'REJECTED' || status === 'NOT_RECOMMENDED' || status === 'CLOSED') color = 'bg-red-100 text-red-700 border-red-200';
+            return `<span class="px-2 py-0.5 border rounded text-[10px] font-bold ${color}">${status.replace(/_/g, ' ')}</span>`;
+        };
+
+        const getPriorityBadge = (prio) => {
+            const colors = { 'HIGH': 'text-red-600 bg-red-50', 'MEDIUM': 'text-orange-600 bg-orange-50', 'LOW': 'text-blue-600 bg-blue-50' };
+            return `<span class="px-2 py-0.5 border rounded text-[10px] font-bold ${colors[prio]}">${prio}</span>`;
+        };
+
+        // DASHBOARD LOGIC 
+        function renderDashboard() {
+            const tasks = getVisibleTasks();
+            const projects = getVisibleProjects();
+            const ars = getVisibleAR();
+            
+            let html = '';
+            if (currentUser.role === 'MANAGER') {
+                html = `
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total AR</p><h3 class="text-3xl font-bold">${ars.length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Waiting Mgr Review</p><h3 class="text-3xl font-bold text-purple-600">${ars.filter(a=>a.currentOwner==='MANAGER' && ['PENDING_MANAGER_REVIEW','PENDING_MANAGER_DRAFTER_REVIEW','PENDING_MANAGER_LEGAL_REVIEW','PENDING_MANAGER_COST_REVIEW'].includes(a.status)).length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Prep / Costing</p><h3 class="text-3xl font-bold text-blue-600">${ars.filter(a=>['READY_FOR_NEXT_STAGE','PREPARATION_IN_PROGRESS','PENDING_PURCHASING_SOURCING','PENDING_MANAGER_COST_REVIEW'].includes(a.status)).length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Ready for GM / Proc</p><h3 class="text-3xl font-bold text-green-600">${ars.filter(a=>['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT'].includes(a.status)).length}</h3></div>
+                `;
+            } else if (currentUser.role === 'SALES') {
+                html = `
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">My Area Requests</p><h3 class="text-3xl font-bold">${ars.length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Submitted</p><h3 class="text-3xl font-bold text-purple-600">${ars.filter(a=>a.status==='PENDING_MANAGER_REVIEW' || a.status==='SUBMITTED').length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">In Process</p><h3 class="text-3xl font-bold text-blue-600">${ars.filter(a=>!['PENDING_MANAGER_REVIEW','SUBMITTED','RETURNED_TO_SALES','REJECTED','COMPLETED','CLOSED'].includes(a.status)).length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm bg-orange-50 border-orange-100"><p class="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-1">Returned</p><h3 class="text-3xl font-bold text-orange-600">${ars.filter(a=>a.status==='RETURNED_TO_SALES').length}</h3></div>
+                `;
+            } else if (currentUser.role === 'DRAFTER') {
+                html = `
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Assigned Tasks</p><h3 class="text-3xl font-bold">${tasks.filter(t=>t.status==='ASSIGNED').length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Tasks In Progress</p><h3 class="text-3xl font-bold text-blue-600">${tasks.filter(t=>t.status==='IN PROGRESS').length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Waiting AR Submission</p><h3 class="text-3xl font-bold text-orange-600">${ars.filter(a=>a.currentOwner==='DRAFTER' || ['ASSIGNED_TO_DRAFTER','RETURNED_TO_DRAFTER'].includes(a.status)).length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Completed Tasks</p><h3 class="text-3xl font-bold text-green-600">${tasks.filter(t=>t.status==='COMPLETED').length}</h3></div>
+                `;
+            } else if (currentUser.role === 'LEGAL') {
+                html = `
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Waiting Review</p><h3 class="text-3xl font-bold text-orange-600">${ars.filter(a=>a.currentOwner==='LEGAL' || ['ASSIGNED_TO_LEGAL','RETURNED_TO_LEGAL'].includes(a.status) || (a.status==='READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status==='RETURNED')).length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pending Status</p><h3 class="text-3xl font-bold text-blue-600">${ars.filter(a=>a.legalResult?.permitStatus==='PENDING').length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Completed</p><h3 class="text-3xl font-bold text-green-600">${ars.filter(a=>a.legalResult && !['ASSIGNED_TO_LEGAL','RETURNED_TO_LEGAL'].includes(a.status) && !(a.status==='READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status==='RETURNED')).length}</h3></div>
+                `;
+            } else if (currentUser.role === 'SPV') {
+                const pendDocs = tasks.filter(t => t.taskType === 'POLE_INSTALLATION' && t.status !== 'COMPLETED').length;
+                html = `
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Assigned Projects</p><h3 class="text-3xl font-bold">${projects.length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">On Progress</p><h3 class="text-3xl font-bold text-blue-600">${projects.filter(p=>p.status==='ON PROGRESS').length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Completed</p><h3 class="text-3xl font-bold text-green-600">${projects.filter(p=>p.status==='COMPLETED').length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm bg-orange-50 border-orange-100"><p class="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-1">Pending Documentation</p><h3 class="text-3xl font-bold text-orange-600">${pendDocs}</h3></div>
+                `;
+            } else if (currentUser.role === 'PURCHASING') {
+                html = `
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Sourcing Requests</p><h3 class="text-3xl font-bold">${ars.filter(a=>a.currentOwner==='PURCHASING').length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pending Sourcing</p><h3 class="text-3xl font-bold text-orange-600">${ars.filter(a=>a.status==='PENDING_PURCHASING_SOURCING' || a.status==='RETURNED_TO_PURCHASING').length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Submitted Sourcing</p><h3 class="text-3xl font-bold text-blue-600">${ars.filter(a=>a.status==='PENDING_MANAGER_COST_REVIEW').length}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Completed (Project Prep)</p><h3 class="text-3xl font-bold text-green-600">${ars.filter(a=>['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT'].includes(a.status)).length}</h3></div>
+                `;
+            } else if (currentUser.role === 'GENERAL_MANAGER') {
+                let pendingTech = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.technical?.status === 'PENDING').length;
+                let pendingLeg = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status === 'PENDING').length;
+                let returnedTech = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.technical?.status === 'RETURNED').length;
+                let returnedLeg = ars.filter(a => a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status === 'RETURNED').length;
+                let readyProc = ars.filter(a => a.status === 'READY_FOR_PROCUREMENT').length;
+                html = `
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pending Tech Review</p><h3 class="text-3xl font-bold text-blue-600">${pendingTech}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pending Legal Review</p><h3 class="text-3xl font-bold text-indigo-600">${pendingLeg}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Returned (Tech/Leg)</p><h3 class="text-3xl font-bold text-orange-600">${returnedTech + returnedLeg}</h3></div>
+                    <div class="bg-white p-5 rounded-lg border shadow-sm bg-green-50 border-green-100"><p class="text-[10px] font-bold text-green-500 uppercase tracking-widest mb-1">Ready for Procurement</p><h3 class="text-3xl font-bold text-green-700">${readyProc}</h3></div>
+                `;
+            }
+            document.getElementById('dashboard-kpi').innerHTML = html;
+        }
+
+        // AREA REQUEST TABLE RENDERER
+        function renderAreaRequests() {
+            const query = (document.getElementById('search-ar')?.value || '').toLowerCase();
+            const ars = getVisibleAR().filter(a => a.id.toLowerCase().includes(query) || a.areaName.toLowerCase().includes(query));
+            const tbody = document.getElementById('ar-table-body');
+            
+            if(ars.length === 0) { tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-gray-400">No area requests found.</td></tr>`; return; }
+
+            tbody.innerHTML = ars.map(a => `
+                <tr class="hover:bg-gray-50 transition cursor-pointer" onclick="openArDetail('${a.id}')">
+                    <td class="px-6 py-4"><div class="font-bold text-gray-800">${a.id}</div><div class="text-xs text-gray-500">${a.areaName}</div></td>
+                    <td class="px-6 py-4 text-xs text-gray-500">${a.kecamatan}, ${a.kabupaten}<br><span class="text-[10px] text-gray-400">Sales: ${a.salesName}</span></td>
+                    <td class="px-6 py-4">${getStatusBadge(a.status)}</td>
+                    <td class="px-6 py-4 text-xs font-bold text-gray-700 uppercase tracking-wider">${a.currentOwner}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderProjects() {
+            const query = (document.getElementById('search-project')?.value || '').toLowerCase();
+            const projects = getVisibleProjects().filter(p => p.name.toLowerCase().includes(query));
+            const tbody = document.getElementById('projects-table-body');
+            if(projects.length === 0) { tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-gray-400">No projects found.</td></tr>`; return; }
+
+            tbody.innerHTML = projects.map(p => `
+                <tr class="hover:bg-gray-50 transition cursor-pointer" onclick="openProjectDetail('${p.id}')">
+                    <td class="px-6 py-4"><div class="font-medium text-gray-800">${p.name}</div><div class="text-[10px] font-mono text-gray-500">${p.id} • Ref: ${p.client}</div></td>
+                    <td class="px-6 py-4">${getStatusBadge(p.status)}</td>
+                    <td class="px-6 py-4"><div class="flex items-center gap-2"><div class="w-24 bg-bg-gray-200 rounded-full h-2"><div class="bg-blue-600 h-2 rounded-full" style="width: ${p.progress}%"></div></div><span class="text-xs text-gray-500">${p.progress}%</span></div></td>
+                    <td class="px-6 py-4 text-sm ${isOverdue(p) ? 'text-red-600 font-bold' : 'text-gray-600'}">${p.targetDate}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderTasks() {
+            const query = (document.getElementById('search-task')?.value || '').toLowerCase();
+            const statusFilter = document.getElementById('filter-task-status')?.value || 'ALL';
+            
+            let tasks = getVisibleTasks().filter(t => {
+                const matchSearch = t.name.toLowerCase().includes(query) || t.id.toLowerCase().includes(query);
+                const matchStatus = statusFilter === 'ALL' || t.status === statusFilter;
+                return matchSearch && matchStatus;
+            });
+
+            const tbody = document.getElementById('tasks-table-body');
+            if(tasks.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-gray-400">No tasks found.</td></tr>`; return; }
+            const users = getRawUsers();
+
+            tbody.innerHTML = tasks.map(t => {
+                const assigneeName = users.find(u => u.id === t.assignee)?.name || 'Unknown';
+                const sourceId = t.projectId ? t.projectId : (t.areaRequestId ? t.areaRequestId : 'Unknown');
+                const overdueBadge = isOverdue(t) ? `<span class="ml-2 px-1.5 py-0.5 bg-red-100 text-red-700 text-[9px] font-bold rounded">OVERDUE</span>` : '';
+                return `
+                <tr class="hover:bg-gray-50 transition cursor-pointer" onclick="openTaskDetail('${t.id}')">
+                    <td class="px-6 py-4"><div class="font-medium text-gray-800">${t.name} ${overdueBadge}</div><div class="text-[10px] text-gray-500 mt-1 font-mono">${t.id} • Type: ${t.taskType.replace('_', ' ')} • ${getPriorityBadge(t.priority)}</div></td>
+                    <td class="px-6 py-4 text-sm text-gray-600 font-mono">${sourceId}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${assigneeName}</td>
+                    <td class="px-6 py-4">${getStatusBadge(t.status)}<div class="text-[10px] text-gray-500 mt-1 font-bold">${t.progress}%</div></td>
+                    <td class="px-6 py-4 text-sm ${isOverdue(t) ? 'text-red-600 font-bold' : 'text-gray-600'}">${t.deadline}</td>
+                </tr>`
+            }).join('');
+        }
+
+        /** ==========================================
+         * 5. MODALS & DATA MUTATION (Core Business Logic)
+         * ========================================== */
+        function closeModal(id) { document.getElementById(id).classList.add('hide'); }
+
+        // --- SALES CREATE AR ---
+        function openCreateArModal() {
+            if(currentUser.role !== 'SALES') return;
+            document.getElementById('ar-name').value = ''; document.getElementById('ar-kec').value = ''; document.getElementById('ar-kab').value = ''; 
+            document.getElementById('ar-prov').value = ''; document.getElementById('ar-detail-loc').value = ''; document.getElementById('ar-coord').value = ''; 
+            document.getElementById('ar-reason').value = ''; document.getElementById('ar-edit-id').value = '';
+            document.getElementById('modal-create-ar').classList.remove('hide');
+        }
+
+        function saveAreaRequest() {
+            if(currentUser.role !== 'SALES') return;
+            const name = document.getElementById('ar-name').value.trim(); const kec = document.getElementById('ar-kec').value.trim(); const kab = document.getElementById('ar-kab').value.trim();
+            const prov = document.getElementById('ar-prov').value.trim(); const loc = document.getElementById('ar-detail-loc').value.trim(); 
+            const coord = document.getElementById('ar-coord').value.trim(); const reason = document.getElementById('ar-reason').value.trim();
+            const editId = document.getElementById('ar-edit-id').value;
+
+            if(!name || !kec || !kab || !prov || !loc || !coord || !reason) { showToast('Lengkapi semua data wajib!', true); return; }
+
+            const ars = getRawAR();
+            let ar;
+            
+            if (editId) {
+                // Handle Resubmit
+                ar = ars.find(a => a.id === editId);
+                const oldStatus = ar.status;
+                ar.areaName = name; ar.kecamatan = kec; ar.kabupaten = kab; ar.provinsi = prov;
+                ar.detailLocation = loc; ar.coordinates = coord; ar.reasonPotential = reason;
+                ar.status = 'PENDING_MANAGER_REVIEW'; ar.currentOwner = 'MANAGER';
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Area Request Resubmitted (${oldStatus} ➔ ${ar.status})`, note: 'Resubmitted after revision' });
+            } else {
+                const newId = 'AR-' + new Date().getTime().toString().slice(-4);
+                ar = {
+                    id: newId, salesUserId: currentUser.id, salesName: currentUser.name,
+                    areaName: name, kecamatan: kec, kabupaten: kab, provinsi: prov, detailLocation: loc, coordinates: coord, reasonPotential: reason,
+                    status: 'PENDING_MANAGER_REVIEW', currentOwner: 'MANAGER',
+                    drafterId: null, legalId: null, managerNotes: '', salesRevisionNotes: '', drafterRevisionNotes: '', legalRevisionNotes: '', purchasingRevisionNotes: '',
+                    drafterResult: null, legalResult: null, projectPreparation: null, projectId: null, gmApproval: null,
+                    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+                    history: [{ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: 'Area Request Submitted', note: '' }]
+                };
+                ars.push(ar);
+            }
+            
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            showToast('Area Request Submitted!');
+            closeModal('modal-create-ar'); closeModal('modal-ar-detail');
+            if(activeView === 'area-requests') renderAreaRequests();
+            if(activeView === 'dashboard') renderDashboard();
+        }
+
+        // --- AREA REQUEST DETAIL ---
+        function openArDetail(id) {
+            const ars = getRawAR(); // Mutable reference for initialization
+            const arIndex = ars.findIndex(a => a.id === id);
+            if (arIndex === -1) return;
+            const ar = ars[arIndex];
+            currentDetailArId = id;
+
+            // Safe init for GM Approval if reaching required stage
+            if (['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT'].includes(ar.status)) {
+                if (!ar.gmApproval) {
+                    ar.gmApproval = {
+                        technical: { status: 'PENDING', note: '', updatedBy: '', updatedAt: '', history: [] },
+                        legal: { status: 'PENDING', note: '', updatedBy: '', updatedAt: '', history: [] }
+                    };
+                    localStorage.setItem(NS_AR, JSON.stringify(ars)); // Safe persist
+                }
+            }
+
+            // 1. Setup Header & Sales Data
+            document.getElementById('dar-id').textContent = `#${ar.id}`;
+            document.getElementById('dar-name').textContent = ar.areaName; document.getElementById('dar-sales').textContent = ar.salesName;
+            document.getElementById('dar-status').innerHTML = getStatusBadge(ar.status); document.getElementById('dar-owner').textContent = ar.currentOwner;
+            document.getElementById('dar-prov').textContent = ar.provinsi; document.getElementById('dar-kab').textContent = ar.kabupaten;
+            document.getElementById('dar-kec').textContent = ar.kecamatan; document.getElementById('dar-coord').textContent = ar.coordinates;
+            document.getElementById('dar-loc').textContent = ar.detailLocation; document.getElementById('dar-reason').textContent = ar.reasonPotential;
+            
+            if(ar.status === 'RETURNED_TO_SALES') {
+                document.getElementById('dar-sales-revision').classList.remove('hide');
+                document.getElementById('dar-sales-revision-text').textContent = ar.salesRevisionNotes;
+            } else { document.getElementById('dar-sales-revision').classList.add('hide'); }
+
+            // 2. Setup Drafter Section
+            const secDrafter = document.getElementById('section-drafter');
+            const dDisp = document.getElementById('dar-drafter-display');
+            const dForm = document.getElementById('dar-drafter-form');
+            const dAlert = document.getElementById('dar-drafter-revision');
+            secDrafter.classList.add('hide'); dDisp.classList.add('hide'); dForm.classList.add('hide'); dAlert.classList.add('hide');
+            
+            if (ar.drafterResult || ['ASSIGNED_TO_DRAFTER', 'PENDING_MANAGER_DRAFTER_REVIEW', 'RETURNED_TO_DRAFTER', 'ASSIGNED_TO_LEGAL', 'PENDING_MANAGER_LEGAL_REVIEW', 'RETURNED_TO_LEGAL', 'READY_FOR_NEXT_STAGE', 'PREPARATION_IN_PROGRESS', 'PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'COMPLETED'].includes(ar.status)) {
+                secDrafter.classList.remove('hide');
+                if(ar.drafterResult) {
+                    dDisp.classList.remove('hide');
+                    document.getElementById('dar-hp').textContent = ar.drafterResult.totalHomepass;
+                    // Restore estimatedCust and add technicalCoverage side-by-side
+                    document.getElementById('dar-est-cust').textContent = ar.drafterResult.estimatedCust || '-';
+                    document.getElementById('dar-coverage').textContent = ar.drafterResult.technicalCoverage || '-';
+                    document.getElementById('dar-attachment').textContent = ar.drafterResult.attachment;
+                    document.getElementById('dar-drafter-notes').textContent = ar.drafterResult.notes;
+                }
+                
+                if(ar.status === 'RETURNED_TO_DRAFTER') {
+                    dAlert.classList.remove('hide');
+                    document.getElementById('dar-drafter-revision-text').textContent = ar.drafterRevisionNotes;
+                }
+
+                if (currentUser.role === 'DRAFTER' && ar.currentOwner === 'DRAFTER') {
+                    dForm.classList.remove('hide'); dDisp.classList.add('hide');
+                    document.getElementById('in-hp').value = ar.drafterResult?.totalHomepass || '';
+                    document.getElementById('in-est-cust').value = ar.drafterResult?.estimatedCust || '';
+                    document.getElementById('in-coverage').value = ar.drafterResult?.technicalCoverage || '';
+                    document.getElementById('in-attachment').value = ar.drafterResult?.attachment || '';
+                    document.getElementById('in-drafter-notes').value = ar.drafterResult?.notes || '';
+                }
+            }
+
+            // 3. Setup Legal Section
+            const secLegal = document.getElementById('section-legal');
+            const lDisp = document.getElementById('dar-legal-display');
+            const lForm = document.getElementById('dar-legal-form');
+            const lAlert = document.getElementById('dar-legal-revision');
+            secLegal.classList.add('hide'); lDisp.classList.add('hide'); lForm.classList.add('hide'); lAlert.classList.add('hide');
+
+            if (ar.legalResult || ['ASSIGNED_TO_LEGAL', 'PENDING_MANAGER_LEGAL_REVIEW', 'RETURNED_TO_LEGAL', 'READY_FOR_NEXT_STAGE', 'PREPARATION_IN_PROGRESS', 'PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'COMPLETED'].includes(ar.status)) {
+                secLegal.classList.remove('hide');
+                if(ar.legalResult) {
+                    lDisp.classList.remove('hide');
+                    document.getElementById('dar-permit-status').innerHTML = getStatusBadge(ar.legalResult.permitStatus);
+                    document.getElementById('dar-related-party').textContent = ar.legalResult.relatedParty;
+                    document.getElementById('dar-est-cost').textContent = (ar.legalResult.estimatedPermitCost !== undefined && ar.legalResult.estimatedPermitCost !== null) ? 'Rp ' + ar.legalResult.estimatedPermitCost.toLocaleString('id-ID') : 'Rp 0';
+                    document.getElementById('dar-permit-info').textContent = ar.legalResult.permitInformation;
+                    document.getElementById('dar-constraints').textContent = ar.legalResult.potentialConstraints;
+                    document.getElementById('dar-legal-notes').textContent = ar.legalResult.legalNotes;
+                }
+
+                if(ar.status === 'RETURNED_TO_LEGAL' || (ar.status === 'READY_FOR_GM_APPROVAL' && ar.gmApproval?.legal?.status === 'RETURNED')) {
+                    lAlert.classList.remove('hide');
+                    document.getElementById('dar-legal-revision-text').textContent = ar.status === 'RETURNED_TO_LEGAL' ? ar.legalRevisionNotes : ar.gmApproval.legal.note;
+                }
+
+                const isLegalUserEditing = currentUser.role === 'LEGAL' && (ar.status === 'ASSIGNED_TO_LEGAL' || ar.status === 'RETURNED_TO_LEGAL');
+                const isManagerRevisingLegal = currentUser.role === 'MANAGER' && ar.status === 'READY_FOR_GM_APPROVAL' && ar.gmApproval?.legal?.status === 'RETURNED';
+
+                if (isLegalUserEditing || isManagerRevisingLegal) {
+                    lForm.classList.remove('hide'); lDisp.classList.add('hide');
+                    document.getElementById('in-permit-status').value = ar.legalResult?.permitStatus || 'CLEAR';
+                    document.getElementById('in-related-party').value = ar.legalResult?.relatedParty || '';
+                    document.getElementById('in-est-cost').value = ar.legalResult?.estimatedPermitCost !== undefined ? ar.legalResult.estimatedPermitCost : '';
+                    document.getElementById('in-permit-info').value = ar.legalResult?.permitInformation || '';
+                    document.getElementById('in-constraints').value = ar.legalResult?.potentialConstraints || '';
+                    document.getElementById('in-legal-notes').value = ar.legalResult?.legalNotes || '';
+                    
+                    const lBtnCont = document.getElementById('dar-legal-btn-container');
+                    if (isManagerRevisingLegal) {
+                        lBtnCont.innerHTML = `<button onclick="submitLegalRevision()" class="w-full bg-indigo-600 text-white text-sm py-2 rounded font-medium hover:bg-indigo-700 cursor-pointer">Submit Legal Revision</button>`;
+                    } else {
+                        lBtnCont.innerHTML = `<button onclick="submitLegalResult()" class="w-full bg-indigo-600 text-white text-sm py-2 rounded font-medium hover:bg-indigo-700 cursor-pointer">Submit Legal Result</button>`;
+                    }
+                }
+            }
+
+            // 4. Setup Project Preparation Section
+            const secPrep = document.getElementById('section-preparation');
+            if(ar.projectPreparation || ['PREPARATION_IN_PROGRESS', 'PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'COMPLETED'].includes(ar.status)) {
+                secPrep.classList.remove('hide');
+                renderPreparationSection(ar);
+            } else { secPrep.classList.add('hide'); }
+
+            // 5. Setup Actions (Manager, Sales, Purchasing, GM)
+            const mgrSec = document.getElementById('dar-manager-actions');
+            const btnCont = document.getElementById('mgr-btn-container');
+            document.getElementById('mgr-form-drafter').classList.add('hide');
+            
+            const noteCont = document.getElementById('mgr-note-container');
+            if(noteCont) noteCont.classList.remove('hide');
+            document.getElementById('mgr-note').value = '';
+            mgrSec.classList.add('hide'); btnCont.innerHTML = '';
+            
+            if(currentUser.role === 'MANAGER') {
+                if(ar.currentOwner === 'MANAGER' || ['PENDING_MANAGER_REVIEW', 'PENDING_MANAGER_DRAFTER_REVIEW', 'PENDING_MANAGER_LEGAL_REVIEW'].includes(ar.status)) {
+                    mgrSec.classList.remove('hide');
+                    if(['PENDING_MANAGER_REVIEW', 'SUBMITTED', 'RETURNED_TO_SALES'].includes(ar.status)) {
+                        document.getElementById('mgr-form-drafter').classList.remove('hide');
+                        document.getElementById('mgr-drafter-sel').innerHTML = getRawUsers().filter(u=>u.role==='DRAFTER').map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+                        btnCont.innerHTML = `<button onclick="arAction('APPROVE_AND_ASSIGN_DRAFTER')" class="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-blue-700 cursor-pointer">Assign Drafter</button>
+                                             <button onclick="arAction('RETURN_TO_SALES')" class="bg-orange-500 text-white text-xs font-bold px-3 py-2 rounded hover:bg-orange-600 cursor-pointer">Return to Sales</button>`;
+                    } 
+                    else if(['PENDING_MANAGER_DRAFTER_REVIEW', 'WAITING_MANAGER_DRAFT_REVIEW'].includes(ar.status)) {
+                        btnCont.innerHTML = `<button onclick="arAction('APPROVE_DRAFTER_RESULT')" class="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-blue-700 cursor-pointer">Approve & Send to Legal</button>
+                                             <button onclick="arAction('RETURN_TO_DRAFTER')" class="bg-orange-500 text-white text-xs font-bold px-3 py-2 rounded hover:bg-orange-600 cursor-pointer">Return to Drafter</button>`;
+                    } 
+                    else if(['PENDING_MANAGER_LEGAL_REVIEW', 'WAITING_MANAGER_FINAL_REVIEW'].includes(ar.status)) {
+                        btnCont.innerHTML = `<button onclick="arAction('APPROVE_FOR_NEXT_STAGE')" class="bg-green-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-green-700 cursor-pointer">Mark Ready for Next Stage</button>
+                                             <button onclick="arAction('RETURN_TO_LEGAL')" class="bg-orange-500 text-white text-xs font-bold px-3 py-2 rounded hover:bg-orange-600 cursor-pointer">Return to Legal</button>`;
+                    }
+                }
+                
+                // Manager Preparation & Cost Review Actions
+                if(ar.status === 'READY_FOR_NEXT_STAGE') {
+                    mgrSec.classList.remove('hide');
+                    btnCont.innerHTML = `<button onclick="arAction('START_PREPARATION')" class="bg-indigo-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-indigo-700 cursor-pointer">Start Project Preparation / Costing</button>`;
+                }
+                else if(ar.status === 'PREPARATION_IN_PROGRESS') {
+                    mgrSec.classList.remove('hide');
+                    btnCont.innerHTML = `<button onclick="arAction('SEND_TO_PURCHASING')" class="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-blue-700 cursor-pointer">Send Sourcing to Purchasing</button>`;
+                }
+                else if(ar.status === 'PENDING_MANAGER_COST_REVIEW') {
+                    mgrSec.classList.remove('hide');
+                    btnCont.innerHTML = `<button onclick="arAction('FINALIZE_COSTING')" class="bg-green-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-green-700 cursor-pointer">Finalize Cost Planning</button>
+                                         <button onclick="arAction('RETURN_TO_PURCHASING')" class="bg-orange-500 text-white text-xs font-bold px-3 py-2 rounded hover:bg-orange-600 cursor-pointer">Return to Purchasing</button>`;
+                }
+                else if (ar.status === 'READY_FOR_GM_APPROVAL') {
+                    let revisionBtns = '';
+                    if (ar.gmApproval?.technical?.status === 'RETURNED') {
+                        revisionBtns += `<button onclick="submitTechnicalRevision()" class="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-blue-700 cursor-pointer mb-2 w-full">Submit Technical Revision</button>`;
+                    }
+                    // Note: Legal revision button is inside the Legal Form section above
+                    if (revisionBtns !== '') {
+                        mgrSec.classList.remove('hide');
+                        if(noteCont) noteCont.classList.add('hide'); // Not needed for resubmitting revision
+                        btnCont.innerHTML = revisionBtns;
+                    }
+                }
+            }
+            
+            // Purchasing Action
+            if(currentUser.role === 'PURCHASING' && (ar.status === 'PENDING_PURCHASING_SOURCING' || ar.status === 'RETURNED_TO_PURCHASING')) {
+                mgrSec.classList.remove('hide'); // re-use section for purchasing submission
+                document.getElementById('mgr-note').value = '';
+                mgrSec.querySelector('h4').innerHTML = `<i class="fa-solid fa-boxes-packing"></i> Purchasing Action`;
+                document.getElementById('mgr-note').placeholder = "Optional Note...";
+                btnCont.innerHTML = `<button onclick="submitSourcing()" class="bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-blue-700 cursor-pointer">Submit Sourcing Results to Manager</button>`;
+            }
+
+            // General Manager Action (PATCH 4)
+            if(currentUser.role === 'GENERAL_MANAGER' && ar.status === 'READY_FOR_GM_APPROVAL') {
+                mgrSec.classList.remove('hide');
+                mgrSec.querySelector('h4').innerHTML = `<i class="fa-solid fa-gavel"></i> General Manager Review`;
+                if(noteCont) noteCont.classList.add('hide'); // Hide standard note input
+                
+                let gmHtml = '';
+                if (ar.gmApproval?.technical?.status === 'PENDING') {
+                    gmHtml += `<div class="mb-3 p-3 bg-white border border-gray-200 rounded w-full">
+                                  <h5 class="text-xs font-bold mb-2 text-gray-700">Technical / Cost Review</h5>
+                                  <input type="text" id="gm-tech-note" class="w-full text-sm border rounded px-2 py-1.5 mb-2 focus:outline-none" placeholder="Technical Note (Required for Return)">
+                                  <div class="flex gap-2">
+                                      <button onclick="gmAction('TECHNICAL', 'APPROVE')" class="bg-green-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-green-700 cursor-pointer">Approve Technical</button>
+                                      <button onclick="gmAction('TECHNICAL', 'RETURN')" class="bg-red-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-red-700 cursor-pointer">Return Technical</button>
+                                  </div>
+                               </div>`;
+                }
+                if (ar.gmApproval?.legal?.status === 'PENDING') {
+                    gmHtml += `<div class="mb-3 p-3 bg-white border border-gray-200 rounded w-full">
+                                  <h5 class="text-xs font-bold mb-2 text-gray-700">Legal Review</h5>
+                                  <input type="text" id="gm-legal-note" class="w-full text-sm border rounded px-2 py-1.5 mb-2 focus:outline-none" placeholder="Legal Note (Required for Return)">
+                                  <div class="flex gap-2">
+                                      <button onclick="gmAction('LEGAL', 'APPROVE')" class="bg-green-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-green-700 cursor-pointer">Approve Legal</button>
+                                      <button onclick="gmAction('LEGAL', 'RETURN')" class="bg-red-600 text-white text-xs font-bold px-3 py-2 rounded hover:bg-red-700 cursor-pointer">Return Legal</button>
+                                  </div>
+                               </div>`;
+                }
+                if (!gmHtml) gmHtml = `<div class="text-sm font-bold text-green-600">All available domains have been processed.</div>`;
+                
+                btnCont.innerHTML = gmHtml;
+            }
+
+            const salesSec = document.getElementById('dar-sales-actions');
+            salesSec.classList.add('hide');
+            if(currentUser.role === 'SALES' && ar.status === 'RETURNED_TO_SALES') salesSec.classList.remove('hide');
+
+            // Setup History 
+            const histArray = [...(ar.history || [])].reverse(); 
+            document.getElementById('dar-history').innerHTML = histArray.map(h => `
+                <div class="border-l-2 border-blue-200 pl-4 pb-4 relative">
+                    <div class="absolute w-2.5 h-2.5 bg-blue-500 rounded-full -left-[6px] top-1.5 border-2 border-white"></div>
+                    <div class="text-[10px] font-mono text-gray-400 mb-0.5">${new Date(h.timestamp).toLocaleString('id-ID')}</div>
+                    <div class="text-xs font-bold text-gray-800">${h.actor} <span class="text-[9px] font-normal text-gray-500 bg-gray-100 px-1 rounded ml-1">${h.role}</span></div>
+                    <div class="font-semibold text-[11px] text-blue-700 mt-0.5 tracking-wide">${h.action}</div>
+                    ${h.note ? `<div class="text-[11px] text-gray-600 mt-1 italic border-l-2 border-gray-200 pl-2">"${h.note}"</div>` : ''}
+                </div>
+            `).join('');
+
+            document.getElementById('modal-ar-detail').classList.remove('hide');
+        }
+
+        // --- PREPARATION & COSTING RENDERER ---
+        function renderPreparationSection(ar) {
+            const container = document.getElementById('dar-prep-content');
+            if(!ar.projectPreparation) { container.innerHTML = `<p class="text-xs text-gray-500 italic">Preparation not started yet.</p>`; return; }
+            const prep = ar.projectPreparation;
+            const isManagerPrep = (currentUser.role === 'MANAGER' && (ar.status === 'PREPARATION_IN_PROGRESS' || (ar.status === 'READY_FOR_GM_APPROVAL' && ar.gmApproval?.technical?.status === 'RETURNED')));
+            const isManagerReview = (currentUser.role === 'MANAGER' && ar.status === 'PENDING_MANAGER_COST_REVIEW');
+            const isPurchasing = (currentUser.role === 'PURCHASING' && ['PENDING_PURCHASING_SOURCING', 'RETURNED_TO_PURCHASING'].includes(ar.status));
+
+            // Calc Summary Safely
+            const costs = calculateCosts(ar);
+
+            let html = '';
+            
+            // Reusable render for Internal Cost Tables (A, B, C, D)
+            if (currentUser.role !== 'PURCHASING' || ['READY_FOR_GM_APPROVAL','READY_FOR_PROCUREMENT','COMPLETED'].includes(ar.status)) {
+                
+                // Manager Alert for Technical Revision inside READY_FOR_GM_APPROVAL
+                const tAlert = document.getElementById('dar-manager-tech-revision');
+                tAlert.classList.add('hide');
+                if (ar.status === 'READY_FOR_GM_APPROVAL' && ar.gmApproval?.technical?.status === 'RETURNED') {
+                    tAlert.classList.remove('hide');
+                    document.getElementById('dar-tech-revision-text').textContent = ar.gmApproval.technical.note;
+                }
+
+                // A. Materials
+                html += `<div class="mb-4"><div class="flex justify-between items-center mb-1"><h5 class="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-200 pb-1 w-full flex justify-between">A. Material / Bahan Baku ${isManagerPrep ? `<button onclick="openAddPrepModal('MATERIAL')" class="text-blue-600 hover:text-blue-800"><i class="fa-solid fa-plus"></i> Add</button>` : ''}</h5></div>`;
+                if(prep.materials.length > 0) {
+                    html += `<table class="w-full text-left text-sm prep-table bg-white rounded border">
+                        <thead><tr><th>Material</th><th>Qty</th><th class="text-right">Est. Unit Price</th><th class="text-center">Sourcing</th><th></th></tr></thead><tbody>`;
+                    html += prep.materials.map(m => {
+                        let finalPrice = m.estimatedUnitPrice ? 'Rp '+m.estimatedUnitPrice.toLocaleString('id-ID') : '-';
+                        if(m.needsSourcing && m.selectedQuoteId) {
+                            let q = prep.sourcingQuotes[m.id]?.find(x => x.id === m.selectedQuoteId);
+                            if(q) finalPrice = '<span class="text-green-600 font-bold">Rp '+q.unitPrice.toLocaleString('id-ID')+'</span>';
+                        } else if(m.needsSourcing && !m.selectedQuoteId) {
+                            finalPrice = '<span class="text-[9px] text-orange-500 italic font-bold">REQ SOURCING</span>';
+                        }
+                        return `<tr>
+                        <td class="font-medium text-gray-800">${m.name}<br><span class="text-[9px] text-gray-500 font-normal">${m.spec}</span></td>
+                        <td class="text-center">${m.qty} ${m.unit}</td>
+                        <td class="text-right">${finalPrice}</td>
+                        <td class="text-center">${m.needsSourcing ? '<span class="text-[10px] text-blue-600 font-bold bg-blue-50 px-1 rounded">YES</span>' : '<span class="text-[10px] text-gray-400">NO</span>'}</td>
+                        <td class="text-center">${isManagerPrep ? `<button onclick="deletePrepItem('materials', '${m.id}')" class="text-red-500 hover:text-red-700 cursor-pointer"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}</td>
+                    </tr>`; }).join('');
+                    html += `</tbody></table>`;
+                } else { html += `<p class="text-[10px] text-gray-400">No materials added.</p>`; }
+                html += `</div>`;
+
+                // B. Equipment
+                html += `<div class="mb-4"><div class="flex justify-between items-center mb-1"><h5 class="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-200 pb-1 w-full flex justify-between">B. Project Equipment ${isManagerPrep ? `<button onclick="openAddPrepModal('EQUIPMENT')" class="text-blue-600 hover:text-blue-800"><i class="fa-solid fa-plus"></i> Add</button>` : ''}</h5></div>`;
+                if(prep.equipment.length > 0) {
+                    html += `<table class="w-full text-left text-sm prep-table bg-white rounded border">
+                        <thead><tr><th>Equipment</th><th>Qty</th><th class="text-right">Est. Cost</th><th class="text-center">Sourcing</th><th></th></tr></thead><tbody>`;
+                    html += prep.equipment.map(m => {
+                        let finalPrice = m.estimatedCost ? 'Rp '+m.estimatedCost.toLocaleString('id-ID') : '-';
+                        if(m.needsSourcing && m.selectedQuoteId) {
+                            let q = prep.sourcingQuotes[m.id]?.find(x => x.id === m.selectedQuoteId);
+                            if(q) finalPrice = '<span class="text-green-600 font-bold">Rp '+q.totalPrice.toLocaleString('id-ID')+'</span>';
+                        } else if(m.needsSourcing && !m.selectedQuoteId) {
+                            finalPrice = '<span class="text-[9px] text-orange-500 italic font-bold">REQ SOURCING</span>';
+                        }
+                        return `<tr>
+                        <td class="font-medium text-gray-800">${m.name}<br><span class="text-[9px] text-gray-500 font-normal">${m.spec}</span></td>
+                        <td class="text-center">${m.qty} ${m.unit}</td>
+                        <td class="text-right">${finalPrice}</td>
+                        <td class="text-center">${m.needsSourcing ? '<span class="text-[10px] text-blue-600 font-bold bg-blue-50 px-1 rounded">YES</span>' : '<span class="text-[10px] text-gray-400">NO</span>'}</td>
+                        <td class="text-center">${isManagerPrep ? `<button onclick="deletePrepItem('equipment', '${m.id}')" class="text-red-500 hover:text-red-700 cursor-pointer"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}</td>
+                    </tr>`; }).join('');
+                    html += `</tbody></table>`;
+                } else { html += `<p class="text-[10px] text-gray-400">No equipment added.</p>`; }
+                html += `</div>`;
+
+                // C. Labor
+                html += `<div class="mb-4"><div class="flex justify-between items-center mb-1"><h5 class="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-200 pb-1 w-full flex justify-between">C. Labor / Upah ${isManagerPrep ? `<button onclick="openAddPrepModal('LABOR')" class="text-blue-600 hover:text-blue-800"><i class="fa-solid fa-plus"></i> Add</button>` : ''}</h5></div>`;
+                if(prep.labor.length > 0) {
+                    html += `<table class="w-full text-left text-sm prep-table bg-white rounded border">
+                        <thead><tr><th>Description / Role</th><th>Work Unit Volume</th><th class="text-right">Est. Total Cost</th><th></th></tr></thead><tbody>`;
+                    html += prep.labor.map(m => {
+                        const fallbackCost = (m.estimatedTotalCost || 0).toLocaleString('id-ID');
+                        const workVolumeDisplay = (m.workQuantity) ? `${m.workQuantity} <span class="text-[9px] uppercase">${m.workUnit}</span>` : `<span class="text-[9px] italic text-gray-400">Legacy Cost Only</span>`;
+                        return `<tr>
+                        <td class="font-medium text-gray-800">${m.desc}<br><span class="text-[9px] text-gray-500 font-normal">${m.category} (${m.qty} workers)</span></td>
+                        <td class="text-center">${workVolumeDisplay}</td>
+                        <td class="text-right">Rp ${fallbackCost}</td>
+                        <td class="text-center">${isManagerPrep ? `<button onclick="deletePrepItem('labor', '${m.id}')" class="text-red-500 hover:text-red-700 cursor-pointer"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}</td>
+                    </tr>`; }).join('');
+                    html += `</tbody></table>`;
+                } else { html += `<p class="text-[10px] text-gray-400">No labor added.</p>`; }
+                html += `</div>`;
+
+                // D. Other Internal
+                html += `<div class="mb-4"><div class="flex justify-between items-center mb-1"><h5 class="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-200 pb-1 w-full flex justify-between">D. Other Cost ${isManagerPrep ? `<button onclick="openAddPrepModal('OTHER')" class="text-blue-600 hover:text-blue-800"><i class="fa-solid fa-plus"></i> Add</button>` : ''}</h5></div>`;
+                if(prep.otherCosts.length > 0) {
+                    html += `<table class="w-full text-left text-sm prep-table bg-white rounded border">
+                        <thead><tr><th>Name / Desc</th><th class="text-right">Est. Cost</th><th></th></tr></thead><tbody>`;
+                    html += prep.otherCosts.map(m => `<tr>
+                        <td class="font-medium text-gray-800">${m.name}<br><span class="text-[9px] text-gray-500 font-normal">${m.desc}</span></td>
+                        <td class="text-right">Rp ${(m.estimatedCost||0).toLocaleString('id-ID')}</td>
+                        <td class="text-center">${isManagerPrep ? `<button onclick="deletePrepItem('otherCosts', '${m.id}')" class="text-red-500 hover:text-red-700 cursor-pointer"><i class="fa-solid fa-trash text-[10px]"></i></button>` : ''}</td>
+                    </tr>`).join('');
+                    html += `</tbody></table>`;
+                } else { html += `<p class="text-[10px] text-gray-400">No other costs added.</p>`; }
+                html += `</div>`;
+            }
+
+            // PURCHASING SOURCING SECTION
+            const sourcingItems = [...prep.materials, ...prep.equipment].filter(i => i.needsSourcing);
+            if (sourcingItems.length > 0 && ['PENDING_PURCHASING_SOURCING', 'PENDING_MANAGER_COST_REVIEW', 'RETURNED_TO_PURCHASING', 'READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'COMPLETED'].includes(ar.status)) {
+                
+                if (ar.status === 'RETURNED_TO_PURCHASING') {
+                    html += `<div class="mb-3 text-sm text-red-600 bg-red-50 p-3 rounded border border-red-100">
+                                <strong>Manager Note (Returned Sourcing): </strong><br><span>${ar.purchasingRevisionNotes || ''}</span>
+                             </div>`;
+                }
+
+                html += `<div class="mb-4 mt-6 border-t-2 border-indigo-200 pt-4"><h5 class="text-sm font-bold text-indigo-700 uppercase tracking-wide mb-2"><i class="fa-solid fa-truck-fast"></i> Sourcing & Quotations</h5>`;
+                
+                sourcingItems.forEach(item => {
+                    const isMat = prep.materials.find(x => x.id === item.id);
+                    const tag = isMat ? 'MAT' : 'EQP';
+                    let quotes = prep.sourcingQuotes[item.id] || [];
+                    
+                    html += `<div class="bg-indigo-50 rounded border border-indigo-100 mb-3 p-3">
+                        <div class="flex justify-between items-start mb-2">
+                            <div><span class="text-[9px] font-bold text-indigo-600 bg-indigo-100 px-1 rounded mr-1">${tag}</span><span class="text-xs font-bold text-gray-800">${item.name}</span><div class="text-[10px] text-gray-500 mt-0.5">Req Qty: <b>${item.qty} ${item.unit}</b></div></div>
+                            ${isPurchasing ? `<button onclick="openAddQuoteModal('${item.id}', '${item.name.replace(/'/g, "\\'")}', ${item.qty})" class="text-[10px] bg-white border border-indigo-300 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-100 font-bold cursor-pointer"><i class="fa-solid fa-plus"></i> Add Quote</button>` : ''}
+                        </div>`;
+                    
+                    if(quotes.length > 0) {
+                        html += `<table class="w-full text-[10px] text-left">
+                            <thead class="bg-indigo-100 text-indigo-800"><tr>${(isManagerReview || isManagerPrep) ? '<th class="w-6 p-1 text-center">Sel</th>' : ''}<th class="p-1">Supplier</th><th class="p-1 text-right">Unit Price</th><th class="p-1 text-right">Total Price</th>${isPurchasing ? '<th class="p-1 w-6"></th>' : ''}</tr></thead>
+                            <tbody class="divide-y divide-indigo-100">`;
+                        
+                        quotes.forEach(q => {
+                            const isSelected = item.selectedQuoteId === q.id;
+                            const rowBg = isSelected ? 'bg-green-100' : 'bg-white';
+                            
+                            html += `<tr class="${rowBg}">
+                                ${(isManagerReview || isManagerPrep) ? `<td class="p-1 text-center"><input type="radio" name="quote_${item.id}" value="${q.id}" onchange="selectQuote('${item.id}', '${q.id}')" ${isSelected ? 'checked' : ''} class="w-3 h-3 cursor-pointer"></td>` : ''}
+                                <td class="p-1 font-medium text-gray-800">${q.supplierName}</td>
+                                <td class="p-1 text-right">Rp ${q.unitPrice.toLocaleString('id-ID')}</td>
+                                <td class="p-1 text-right font-bold text-gray-800">Rp ${q.totalPrice.toLocaleString('id-ID')}</td>
+                                ${isPurchasing ? `<td class="p-1 text-center"><button onclick="deleteQuote('${item.id}', '${q.id}')" class="text-red-400 hover:text-red-600 cursor-pointer"><i class="fa-solid fa-times"></i></button></td>` : ''}
+                            </tr>`;
+                        });
+                        html += `</tbody></table>`;
+                    } else {
+                        html += `<div class="text-[10px] text-orange-600 italic font-bold bg-white p-2 border border-orange-100 rounded text-center">No quotations added yet.</div>`;
+                    }
+                    html += `</div>`;
+                });
+                html += `</div>`;
+            }
+
+            // FINAL PROJECT COST SUMMARY 
+            if (currentUser.role !== 'PURCHASING') {
+                html += `<div class="mt-6 bg-gray-800 text-white rounded-lg p-4 shadow-sm">
+                    <h5 class="text-xs font-bold text-gray-300 uppercase tracking-widest mb-3 border-b border-gray-600 pb-2">Final Project Cost Summary</h5>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between"><span class="text-gray-400">Material Cost</span><span class="font-medium text-white">Rp ${costs.mat.toLocaleString('id-ID')}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">Equipment / Project Req</span><span class="font-medium text-white">Rp ${costs.eq.toLocaleString('id-ID')}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">Labor / Upah</span><span class="font-medium text-white">Rp ${costs.lab.toLocaleString('id-ID')}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">Other Internal Cost</span><span class="font-medium text-white">Rp ${costs.oth.toLocaleString('id-ID')}</span></div>
+                        <div class="flex justify-between border-b border-gray-600 pb-2"><span class="text-gray-400">Legal Permit Cost</span><span class="font-medium text-white">Rp ${costs.prm.toLocaleString('id-ID')}</span></div>
+                        <div class="flex justify-between pt-1"><span class="font-bold text-blue-400 text-sm">FINAL PROJECT COST</span><span class="font-bold text-green-400 text-lg">Rp ${costs.total.toLocaleString('id-ID')}</span></div>
+                    </div>`;
+                    if (costs.unresolved && ['PENDING_MANAGER_COST_REVIEW', 'PREPARATION_IN_PROGRESS', 'PENDING_PURCHASING_SOURCING', 'RETURNED_TO_PURCHASING'].includes(ar.status)) {
+                        html += `<div class="mt-3 p-2 bg-red-900 border border-red-700 text-red-200 text-[10px] font-bold rounded text-center"><i class="fa-solid fa-triangle-exclamation"></i> UNRESOLVED SOURCING ITEMS EXIST</div>`;
+                    }
+                html += `</div>`;
+            }
+
+            // GM APPROVAL SUMMARY (PATCH 4)
+            if (ar.gmApproval && ['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT'].includes(ar.status)) {
+                const tStat = ar.gmApproval.technical.status;
+                const lStat = ar.gmApproval.legal.status;
+                
+                const getGmBadge = (s) => {
+                    if(s==='APPROVED') return `<span class="px-2 py-0.5 border rounded text-[10px] font-bold bg-green-100 text-green-700 border-green-200">APPROVED</span>`;
+                    if(s==='RETURNED') return `<span class="px-2 py-0.5 border rounded text-[10px] font-bold bg-red-100 text-red-700 border-red-200">RETURNED</span>`;
+                    return `<span class="px-2 py-0.5 border rounded text-[10px] font-bold bg-orange-100 text-orange-700 border-orange-200">PENDING</span>`;
+                };
+
+                let summaryHtml = `
+                <div class="mt-6 bg-slate-50 border border-slate-200 p-4 rounded-lg">
+                    <h4 class="text-sm font-bold text-slate-800 mb-3 border-b border-slate-200 pb-1"><i class="fa-solid fa-check-double"></i> General Manager Approval Summary</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-3 bg-white border rounded">
+                            <div class="flex justify-between items-center mb-2"><span class="text-xs font-bold text-gray-700">Technical / Cost Review</span>${getGmBadge(tStat)}</div>
+                            ${tStat === 'RETURNED' ? `<div class="text-[10px] text-red-600 bg-red-50 p-2 rounded mt-2 border border-red-100"><b>Return Reason:</b> ${ar.gmApproval.technical.note}<br><span class="text-gray-500">By ${ar.gmApproval.technical.updatedBy} at ${new Date(ar.gmApproval.technical.updatedAt).toLocaleString('id-ID')}</span></div>` : ''}
+                        </div>
+                        <div class="p-3 bg-white border rounded">
+                            <div class="flex justify-between items-center mb-2"><span class="text-xs font-bold text-gray-700">Legal Review</span>${getGmBadge(lStat)}</div>
+                            ${lStat === 'RETURNED' ? `<div class="text-[10px] text-red-600 bg-red-50 p-2 rounded mt-2 border border-red-100"><b>Return Reason:</b> ${ar.gmApproval.legal.note}<br><span class="text-gray-500">By ${ar.gmApproval.legal.updatedBy} at ${new Date(ar.gmApproval.legal.updatedAt).toLocaleString('id-ID')}</span></div>` : ''}
+                        </div>
+                    </div>
+                </div>`;
+                html += summaryHtml;
+            }
+
+            container.innerHTML = html;
+        }
+
+        // Calculation utility 
+        function calculateCosts(ar) {
+            let mat = 0, eq = 0, lab = 0, oth = 0, unresolved = false;
+            let prep = ar.projectPreparation;
+            let prm = Number(ar.legalResult?.estimatedPermitCost || 0);
+
+            if(!prep) return { mat, eq, lab, oth, prm, total: prm, unresolved };
+
+            prep.materials.forEach(m => {
+                if(m.needsSourcing) {
+                    if(m.selectedQuoteId) {
+                        let q = prep.sourcingQuotes[m.id]?.find(x => x.id === m.selectedQuoteId);
+                        if(q) mat += q.totalPrice;
+                    } else { unresolved = true; }
+                } else { mat += ((Number(m.estimatedUnitPrice)||0) * m.qty); }
+            });
+
+            prep.equipment.forEach(e => {
+                if(e.needsSourcing) {
+                    if(e.selectedQuoteId) {
+                        let q = prep.sourcingQuotes[e.id]?.find(x => x.id === e.selectedQuoteId);
+                        if(q) eq += q.totalPrice;
+                    } else { unresolved = true; }
+                } else { eq += (Number(e.estimatedCost)||0); }
+            });
+
+            prep.labor.forEach(l => { lab += (Number(l.estimatedTotalCost)||0); });
+            prep.otherCosts.forEach(o => { oth += (Number(o.estimatedCost)||0); });
+
+            let total = mat + eq + lab + oth + prm;
+            return { mat, eq, lab, oth, prm, total, unresolved };
+        }
+
+        // --- PREP UI MUTATIONS ---
+        function openAddPrepModal(category) {
+            document.getElementById('prep-category').value = category;
+            document.getElementById('prep-name').value = ''; document.getElementById('prep-desc').value = '';
+            document.getElementById('prep-qty').value = '1'; document.getElementById('prep-unit').value = '';
+            document.getElementById('prep-work-qty').value = '1'; document.getElementById('prep-unit-wage').value = ''; 
+            document.getElementById('prep-price').value = ''; document.getElementById('prep-notes').value = '';
+            document.getElementById('prep-sourcing').checked = false;
+            
+            const title = document.getElementById('prep-modal-title');
+            const lblName = document.getElementById('lbl-prep-name');
+            const lblDesc = document.getElementById('lbl-prep-desc');
+            const lblQty = document.getElementById('lbl-prep-qty');
+            const lblPrice = document.getElementById('lbl-prep-price');
+            const rowQty = document.getElementById('prep-qty-unit-row');
+            const rowSrc = document.getElementById('prep-sourcing-row');
+            const rowLaborWork = document.getElementById('prep-labor-work-row');
+            const rowPrice = document.getElementById('prep-price-row');
+
+            rowQty.classList.remove('hide'); rowSrc.classList.add('hide'); rowLaborWork.classList.add('hide'); rowPrice.classList.remove('hide');
+            lblQty.textContent = 'Quantity'; document.getElementById('prep-price').disabled = false;
+
+            if(category === 'MATERIAL') {
+                title.textContent = 'Add Material / Bahan Baku'; lblName.textContent = 'Material Name *'; lblDesc.textContent = 'Specification';
+                lblPrice.textContent = 'Internal Est. Unit Price (Optional)'; rowSrc.classList.remove('hide'); document.getElementById('prep-sourcing').checked = true;
+            } else if(category === 'EQUIPMENT') {
+                title.textContent = 'Add Project Equipment'; lblName.textContent = 'Equipment Name *'; lblDesc.textContent = 'Specification';
+                lblPrice.textContent = 'Est. Total Cost (Optional)'; rowSrc.classList.remove('hide');
+            } else if(category === 'LABOR') {
+                title.textContent = 'Add Labor Cost'; lblName.textContent = 'Work Description *'; lblDesc.textContent = 'Worker Category / Role';
+                lblQty.textContent = 'Worker Quantity (People) *'; document.getElementById('lbl-prep-unit').textContent = 'Work Unit (e.g. Daily, Per Point)';
+                lblPrice.textContent = 'Calculated Est. Total Cost (Rp)';
+                rowLaborWork.classList.remove('hide');
+                document.getElementById('prep-price').disabled = true; // Auto calculated
+            } else if(category === 'OTHER') {
+                title.textContent = 'Add Other Internal Cost'; lblName.textContent = 'Cost Name *'; lblDesc.textContent = 'Description';
+                lblPrice.textContent = 'Estimated Cost *'; rowQty.classList.add('hide');
+            }
+
+            document.getElementById('modal-add-prep-item').classList.remove('hide');
+        }
+
+        function calcLaborTotal() {
+            const wQty = parseFloat(document.getElementById('prep-work-qty').value) || 0;
+            const wUnitWage = parseFloat(document.getElementById('prep-unit-wage').value) || 0;
+            document.getElementById('prep-price').value = (wQty * wUnitWage);
+        }
+
+        function savePrepItem() {
+            const cat = document.getElementById('prep-category').value;
+            const name = document.getElementById('prep-name').value.trim(); const desc = document.getElementById('prep-desc').value.trim();
+            const qty = parseFloat(document.getElementById('prep-qty').value) || 1; const unit = document.getElementById('prep-unit').value.trim();
+            const price = parseFloat(document.getElementById('prep-price').value) || 0; const notes = document.getElementById('prep-notes').value.trim();
+            const src = document.getElementById('prep-sourcing').checked;
+
+            if(!name) { showToast('Nama Item wajib diisi!', true); return; }
+
+            const ars = getRawAR();
+            const ar = ars.find(a => a.id === currentDetailArId);
+            const prep = ar.projectPreparation;
+
+            const newItem = { id: 'I-' + new Date().getTime(), name: name, spec: desc, qty: qty, unit: unit, notes: notes };
+
+            if(cat === 'MATERIAL') {
+                newItem.estimatedUnitPrice = price; newItem.needsSourcing = src; newItem.selectedQuoteId = null;
+                prep.materials.push(newItem);
+            } else if(cat === 'EQUIPMENT') {
+                newItem.estimatedCost = price; newItem.needsSourcing = src; newItem.selectedQuoteId = null;
+                prep.equipment.push(newItem);
+            } else if(cat === 'LABOR') {
+                const wQty = parseFloat(document.getElementById('prep-work-qty').value) || 1;
+                const wUnitWage = parseFloat(document.getElementById('prep-unit-wage').value) || 0;
+                
+                newItem.desc = name; newItem.category = desc; newItem.workUnit = unit; 
+                newItem.workQuantity = wQty; newItem.estimatedUnitWage = wUnitWage; newItem.estimatedTotalCost = price;
+                delete newItem.name; delete newItem.spec; delete newItem.unit;
+                prep.labor.push(newItem);
+            } else if(cat === 'OTHER') {
+                newItem.desc = desc; newItem.estimatedCost = price;
+                delete newItem.spec; delete newItem.qty; delete newItem.unit;
+                prep.otherCosts.push(newItem);
+            }
+
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            renderPreparationSection(ar);
+            closeModal('modal-add-prep-item');
+        }
+
+        function deletePrepItem(catKey, itemId) {
+            const ars = getRawAR();
+            const ar = ars.find(a => a.id === currentDetailArId);
+            ar.projectPreparation[catKey] = ar.projectPreparation[catKey].filter(i => i.id !== itemId);
+            if(ar.projectPreparation.sourcingQuotes[itemId]) delete ar.projectPreparation.sourcingQuotes[itemId];
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            renderPreparationSection(ar);
+        }
+
+        // --- PURCHASING QUOTATION MUTATIONS ---
+        function openAddQuoteModal(itemId, itemName, qty) {
+            document.getElementById('quote-item-id').value = itemId;
+            document.getElementById('quote-item-name').textContent = `Target Item: ${itemName} (Qty: ${qty})`;
+            document.getElementById('quote-supplier').value = ''; document.getElementById('quote-price').value = '';
+            document.getElementById('quote-qty').value = qty; document.getElementById('quote-total').value = '';
+            document.getElementById('quote-notes').value = '';
+            document.getElementById('modal-add-quote').classList.remove('hide');
+        }
+
+        function calcQuoteTotal() {
+            const p = parseFloat(document.getElementById('quote-price').value) || 0;
+            const q = parseFloat(document.getElementById('quote-qty').value) || 0;
+            document.getElementById('quote-total').value = (p * q).toLocaleString('id-ID');
+        }
+
+        function saveQuote() {
+            const itemId = document.getElementById('quote-item-id').value;
+            const supp = document.getElementById('quote-supplier').value.trim();
+            const price = parseFloat(document.getElementById('quote-price').value);
+            const qty = parseFloat(document.getElementById('quote-qty').value);
+            const notes = document.getElementById('quote-notes').value.trim();
+
+            if(!supp || isNaN(price)) { showToast('Nama Supplier dan Unit Price wajib diisi!', true); return; }
+
+            const ars = getRawAR();
+            const ar = ars.find(a => a.id === currentDetailArId);
+            
+            if(!ar.projectPreparation.sourcingQuotes[itemId]) ar.projectPreparation.sourcingQuotes[itemId] = [];
+            ar.projectPreparation.sourcingQuotes[itemId].push({
+                id: 'Q-' + new Date().getTime(), supplierName: supp, unitPrice: price, quantity: qty, totalPrice: (price * qty), notes: notes
+            });
+
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            renderPreparationSection(ar);
+            closeModal('modal-add-quote');
+            showToast('Quote added successfully!');
+        }
+
+        function deleteQuote(itemId, quoteId) {
+            const ars = getRawAR();
+            const ar = ars.find(a => a.id === currentDetailArId);
+            ar.projectPreparation.sourcingQuotes[itemId] = ar.projectPreparation.sourcingQuotes[itemId].filter(q => q.id !== quoteId);
+            
+            // Unset selection if the deleted quote was selected
+            const mat = ar.projectPreparation.materials.find(x => x.id === itemId);
+            if(mat && mat.selectedQuoteId === quoteId) mat.selectedQuoteId = null;
+            const eqp = ar.projectPreparation.equipment.find(x => x.id === itemId);
+            if(eqp && eqp.selectedQuoteId === quoteId) eqp.selectedQuoteId = null;
+
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            renderPreparationSection(ar);
+        }
+
+        function submitSourcing() {
+            const ars = getRawAR();
+            const ar = ars.find(a => a.id === currentDetailArId);
+            const oldStatus = ar.status;
+            
+            ar.status = 'PENDING_MANAGER_COST_REVIEW'; ar.currentOwner = 'MANAGER';
+            ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Sourcing Results Submitted (${oldStatus} ➔ ${ar.status})`, note: 'Purchasing completed sourcing.' });
+            
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            showToast('Sourcing submitted to Manager!');
+            openArDetail(ar.id); renderAreaRequests(); renderDashboard();
+        }
+
+        function selectQuote(itemId, quoteId) {
+            const ars = getRawAR();
+            const ar = ars.find(a => a.id === currentDetailArId);
+            
+            const mat = ar.projectPreparation.materials.find(x => x.id === itemId);
+            if(mat) mat.selectedQuoteId = quoteId;
+            const eqp = ar.projectPreparation.equipment.find(x => x.id === itemId);
+            if(eqp) eqp.selectedQuoteId = quoteId;
+
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            renderPreparationSection(ar); // update UI (green highlight & summary recalc)
+        }
+
+
+        // --- SPECIFIC ROLE SUBMISSIONS (DRAFTER & LEGAL) ---
+        function submitDrafterResult() {
+            if(currentUser.role !== 'DRAFTER') return;
+            const hp = document.getElementById('in-hp').value; 
+            const cust = document.getElementById('in-est-cust').value;
+            const cov = document.getElementById('in-coverage').value.trim();
+            const att = document.getElementById('in-attachment').value.trim(); 
+            const notes = document.getElementById('in-drafter-notes').value.trim();
+
+            if(!hp || !cust || !cov || !att || !notes) { showToast('Lengkapi form Drafter secara penuh!', true); return; }
+
+            const ars = getRawAR();
+            const ar = ars.find(a => a.id === currentDetailArId);
+            const oldStatus = ar.status;
+            
+            ar.drafterResult = { totalHomepass: hp, estimatedCust: cust, technicalCoverage: cov, attachment: att, notes: notes };
+            ar.status = 'PENDING_MANAGER_DRAFTER_REVIEW'; ar.currentOwner = 'MANAGER';
+            ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Drafter Result Submitted (${oldStatus} ➔ ${ar.status})`, note: notes });
+
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            showToast('Drafter result submitted successfully!');
+            closeModal('modal-ar-detail');
+            renderAreaRequests(); renderTasks(); renderDashboard();
+        }
+
+        function submitLegalResult() {
+            if(!currentUser || currentUser.role !== 'LEGAL') { showToast('Akses ditolak', true); return; }
+            const status = document.getElementById('in-permit-status').value; 
+            const info = document.getElementById('in-permit-info').value.trim();
+            const cons = document.getElementById('in-constraints').value.trim(); 
+            const party = document.getElementById('in-related-party').value.trim();
+            const costStr = document.getElementById('in-est-cost').value; 
+            const notes = document.getElementById('in-legal-notes').value.trim();
+
+            if(!status || !info || costStr === '' || !notes) { showToast('Lengkapi informasi perizinan, biaya estimasi, dan notes!', true); return; }
+
+            const cost = parseFloat(costStr);
+            if(isNaN(cost) || cost < 0) { showToast('Biaya estimasi harus berupa angka valid!', true); return; }
+
+            const ars = getRawAR();
+            const ar = ars.find(a => a.id === currentDetailArId);
+            if(!ar) return;
+
+            if (ar.status === 'ASSIGNED_TO_LEGAL' || ar.status === 'RETURNED_TO_LEGAL' || ar.status === 'PENDING_MANAGER_LEGAL_REVIEW') {
+                const oldStatus = ar.status;
+                ar.legalResult = { permitStatus: status, relatedParty: party, estimatedPermitCost: cost, permitInformation: info, potentialConstraints: cons, legalNotes: notes };
+                ar.status = 'PENDING_MANAGER_LEGAL_REVIEW'; ar.currentOwner = 'MANAGER';
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Legal Result Submitted (${oldStatus} ➔ ${ar.status})`, note: notes });
+                showToast('Legal result submitted successfully!');
+            } else {
+                showToast('Operasi tidak valid pada status ini.', true);
+                return;
+            }
+            
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            closeModal('modal-ar-detail');
+            renderAreaRequests(); renderDashboard();
+        }
+
+        function submitLegalRevision() {
+            if(!currentUser || currentUser.role !== 'MANAGER') { showToast('Akses ditolak', true); return; }
+            const status = document.getElementById('in-permit-status').value; 
+            const info = document.getElementById('in-permit-info').value.trim();
+            const cons = document.getElementById('in-constraints').value.trim(); 
+            const party = document.getElementById('in-related-party').value.trim();
+            const costStr = document.getElementById('in-est-cost').value; 
+            const notes = document.getElementById('in-legal-notes').value.trim();
+
+            if(!status || !info || costStr === '' || !notes) { showToast('Lengkapi informasi perizinan, biaya estimasi, dan notes!', true); return; }
+
+            const cost = parseFloat(costStr);
+            if(isNaN(cost) || cost < 0) { showToast('Biaya estimasi harus berupa angka valid!', true); return; }
+
+            const ars = getRawAR();
+            const ar = ars.find(a => a.id === currentDetailArId);
+            if(!ar || ar.status !== 'READY_FOR_GM_APPROVAL' || !ar.gmApproval || ar.gmApproval.legal.status !== 'RETURNED') {
+                showToast('Operasi tidak valid.', true);
+                return;
+            }
+
+            ar.legalResult = { permitStatus: status, relatedParty: party, estimatedPermitCost: cost, permitInformation: info, potentialConstraints: cons, legalNotes: notes };
+            ar.gmApproval.legal.status = 'PENDING';
+            ar.gmApproval.legal.note = '';
+            ar.gmApproval.legal.updatedBy = currentUser.name;
+            ar.gmApproval.legal.updatedAt = new Date().toISOString();
+            ar.gmApproval.legal.history.push({ action: 'REVISION_SUBMITTED', actor: currentUser.name, date: ar.gmApproval.legal.updatedAt, note: 'Legal updated fields' });
+            
+            ar.currentOwner = 'GENERAL_MANAGER';
+            ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: 'Legal Revision Submitted', note: 'Legal domain reset to PENDING for GM Review' });
+            
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            showToast('Legal Revision Submitted!');
+            openArDetail(ar.id); renderAreaRequests(); renderDashboard();
+        }
+
+        function editReturnedAR() {
+            const ar = getVisibleAR().find(a => a.id === currentDetailArId);
+            document.getElementById('ar-edit-id').value = ar.id; document.getElementById('ar-name').value = ar.areaName;
+            document.getElementById('ar-kec').value = ar.kecamatan; document.getElementById('ar-kab').value = ar.kabupaten;
+            document.getElementById('ar-prov').value = ar.provinsi; document.getElementById('ar-detail-loc').value = ar.detailLocation;
+            document.getElementById('ar-coord').value = ar.coordinates; document.getElementById('ar-reason').value = ar.reasonPotential;
+            document.getElementById('modal-ar-detail').classList.add('hide'); document.getElementById('modal-create-ar').classList.remove('hide');
+        }
+
+        // --- MANAGER WORKFLOW TRANSITIONS ---
+        function arAction(actionType) {
+            if(currentUser.role !== 'MANAGER') return;
+            const note = document.getElementById('mgr-note').value.trim();
+            const ars = getRawAR();
+            const ar = ars.find(a => a.id === currentDetailArId);
+            const oldStatus = ar.status;
+
+            if(['RETURN_TO_SALES', 'RETURN_TO_DRAFTER', 'RETURN_TO_LEGAL', 'RETURN_TO_PURCHASING'].includes(actionType)) {
+                if(!note || note === "") { showToast('Manager Note wajib diisi untuk aksi Return!', true); return; }
+            }
+
+            if(actionType === 'APPROVE_AND_ASSIGN_DRAFTER') {
+                const drafterId = document.getElementById('mgr-drafter-sel').value;
+                if(!drafterId) { showToast('Pilih Drafter!', true); return; }
+                ar.drafterId = drafterId;
+                ar.status = 'ASSIGNED_TO_DRAFTER'; ar.currentOwner = 'DRAFTER';
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Assigned to Drafter (${oldStatus} ➔ ${ar.status})`, note: note });
+            
+            } else if(actionType === 'RETURN_TO_SALES') {
+                ar.status = 'RETURNED_TO_SALES'; ar.currentOwner = 'SALES'; ar.salesRevisionNotes = note;
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Returned to Sales (${oldStatus} ➔ ${ar.status})`, note: note });
+            
+            } else if(actionType === 'APPROVE_DRAFTER_RESULT') {
+                ar.status = 'ASSIGNED_TO_LEGAL'; ar.currentOwner = 'LEGAL';
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Sent to Legal (${oldStatus} ➔ ${ar.status})`, note: note });
+            
+            } else if(actionType === 'RETURN_TO_DRAFTER') {
+                ar.status = 'RETURNED_TO_DRAFTER'; ar.currentOwner = 'DRAFTER'; ar.drafterRevisionNotes = note;
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Returned to Drafter (${oldStatus} ➔ ${ar.status})`, note: note });
+            
+            } else if(actionType === 'RETURN_TO_LEGAL') {
+                ar.status = 'RETURNED_TO_LEGAL'; ar.currentOwner = 'LEGAL'; ar.legalRevisionNotes = note;
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Returned to Legal (${oldStatus} ➔ ${ar.status})`, note: note });
+            
+            } else if(actionType === 'APPROVE_FOR_NEXT_STAGE') {
+                ar.status = 'READY_FOR_NEXT_STAGE'; ar.currentOwner = 'MANAGER';
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Marked Ready for Next Stage (${oldStatus} ➔ ${ar.status})`, note: note });
+            
+            } else if(actionType === 'START_PREPARATION') {
+                if(!ar.projectPreparation) ar.projectPreparation = { materials: [], equipment: [], labor: [], otherCosts: [], sourcingQuotes: {} };
+                ar.status = 'PREPARATION_IN_PROGRESS'; ar.currentOwner = 'MANAGER';
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Started Project Preparation (${oldStatus} ➔ ${ar.status})`, note: note });
+            
+            } else if(actionType === 'SEND_TO_PURCHASING') {
+                if (ar.status !== 'PREPARATION_IN_PROGRESS') {
+                    showToast('Action not allowed in current status.', true); return;
+                }
+                const sourcingItems = [...ar.projectPreparation.materials, ...ar.projectPreparation.equipment].filter(i => i.needsSourcing);
+                if(sourcingItems.length === 0) { showToast('Tidak ada item yang membutuhkan Sourcing!', true); return; }
+                ar.status = 'PENDING_PURCHASING_SOURCING'; ar.currentOwner = 'PURCHASING';
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Sent Sourcing to Purchasing (${oldStatus} ➔ ${ar.status})`, note: note });
+            
+            } else if(actionType === 'RETURN_TO_PURCHASING') {
+                ar.status = 'RETURNED_TO_PURCHASING'; ar.currentOwner = 'PURCHASING'; ar.purchasingRevisionNotes = note;
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Returned Sourcing to Purchasing (${oldStatus} ➔ ${ar.status})`, note: note });
+            
+            } else if(actionType === 'FINALIZE_COSTING') {
+                const costs = calculateCosts(ar);
+                if(costs.unresolved) { showToast('Gagal Finalisasi: Terdapat item sourcing yang belum dipilih supplier-nya!', true); return; }
+                
+                if (!ar.gmApproval) {
+                    ar.gmApproval = {
+                        technical: { status: 'PENDING', note: '', updatedBy: '', updatedAt: '', history: [] },
+                        legal: { status: 'PENDING', note: '', updatedBy: '', updatedAt: '', history: [] }
+                    };
+                }
+
+                ar.status = 'READY_FOR_GM_APPROVAL'; 
+                ar.currentOwner = 'GENERAL_MANAGER';
+                ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: `Finalized Cost Planning (${oldStatus} ➔ ${ar.status})`, note: `Total Project Cost: Rp ${costs.total.toLocaleString()}` });
+            }
+
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            showToast('Manager action successfully processed!');
+            openArDetail(currentDetailArId); renderAreaRequests(); renderDashboard();
+        }
+
+        // --- GM ACTIONS (PATCH 4) ---
+        function gmAction(domain, action) {
+            if (!currentUser || currentUser.role !== 'GENERAL_MANAGER') {
+                showToast('Akses ditolak: Hanya General Manager.', true);
+                return;
+            }
+            
+            const ars = getRawAR();
+            const ar = ars.find(a => a.id === currentDetailArId);
+            
+            if (!ar || ar.status !== 'READY_FOR_GM_APPROVAL') {
+                showToast('Status Area Request tidak valid untuk persetujuan GM.', true);
+                return;
+            }
+
+            if (domain !== 'TECHNICAL' && domain !== 'LEGAL') {
+                showToast('Domain tidak valid.', true);
+                return;
+            }
+
+            if (action !== 'APPROVE' && action !== 'RETURN') {
+                showToast('Aksi tidak valid.', true);
+                return;
+            }
+
+            if (!ar.gmApproval || !ar.gmApproval[domain.toLowerCase()]) {
+                showToast('Data approval GM belum siap.', true);
+                return;
+            }
+
+            const domainKey = domain.toLowerCase();
+            const domainObj = ar.gmApproval[domainKey];
+            
+            if (domainObj.status !== 'PENDING') {
+                showToast('Domain ini sudah diproses sebelumnya atau belum di-reset.', true);
+                return;
+            }
+            
+            const noteInputId = domain === 'TECHNICAL' ? 'gm-tech-note' : 'gm-legal-note';
+            const noteInputEl = document.getElementById(noteInputId);
+            const noteInput = noteInputEl ? noteInputEl.value.trim() : '';
+            
+            if (action === 'RETURN' && noteInput === "") {
+                showToast('Return reason is required.', true);
+                return; // BLOCK ACTION
+            }
+            
+            domainObj.status = action === 'APPROVE' ? 'APPROVED' : 'RETURNED';
+            domainObj.note = action === 'RETURN' ? noteInput : (noteInput || '');
+            domainObj.updatedBy = currentUser.name;
+            domainObj.updatedAt = new Date().toISOString();
+            
+            domainObj.history.push({
+                action: domainObj.status,
+                actor: currentUser.name,
+                date: domainObj.updatedAt,
+                note: domainObj.note
+            });
+
+            // Main history update
+            const actionLabel = action === 'APPROVE' ? 'Approve' : 'Return';
+            const domainLabel = domain === 'TECHNICAL' ? 'Technical' : 'Legal';
+            
+            ar.history.push({ 
+                timestamp: domainObj.updatedAt, 
+                actor: currentUser.name, 
+                role: currentUser.role, 
+                action: `GM ${actionLabel} ${domainLabel}`, 
+                note: domainObj.note 
+            });
+
+            if (action === 'RETURN') {
+                ar.currentOwner = 'MANAGER';
+            }
+
+            // Check finalization safely without duplicating
+            if (ar.gmApproval.technical.status === 'APPROVED' && ar.gmApproval.legal.status === 'APPROVED') {
+                if (ar.status !== 'READY_FOR_PROCUREMENT') {
+                    const oldStatus = ar.status;
+                    ar.status = 'READY_FOR_PROCUREMENT';
+                    ar.currentOwner = 'PURCHASING';
+                    ar.history.push({ 
+                        timestamp: new Date().toISOString(), 
+                        actor: currentUser.name, 
+                        role: currentUser.role, 
+                        action: `GM Approval Complete`, 
+                        note: `Both Technical and Legal approved. Status changed from ${oldStatus} to ${ar.status}.` 
+                    });
+                }
+            }
+
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            showToast(`GM ${actionLabel} ${domainLabel} processed!`);
+            openArDetail(currentDetailArId); 
+            renderAreaRequests(); 
+            renderDashboard();
+        }
+
+        function submitTechnicalRevision() {
+            if (!currentUser || currentUser.role !== 'MANAGER') { 
+                showToast('Akses ditolak', true); 
+                return; 
+            }
+            
+            const ars = getRawAR();
+            const ar = ars.find(a => a.id === currentDetailArId);
+            
+            if (!ar || ar.status !== 'READY_FOR_GM_APPROVAL' || !ar.gmApproval || ar.gmApproval.technical.status !== 'RETURNED') {
+                showToast('Operasi tidak valid.', true); 
+                return;
+            }
+
+            const costs = calculateCosts(ar);
+            if(costs.unresolved) { 
+                showToast('Gagal Finalisasi: Terdapat item sourcing yang belum diselesaikan!', true); 
+                return; 
+            }
+            
+            ar.gmApproval.technical.status = 'PENDING';
+            ar.gmApproval.technical.note = '';
+            ar.gmApproval.technical.updatedBy = currentUser.name;
+            ar.gmApproval.technical.updatedAt = new Date().toISOString();
+            ar.gmApproval.technical.history.push({ 
+                action: 'REVISION_SUBMITTED', 
+                actor: currentUser.name, 
+                date: ar.gmApproval.technical.updatedAt, 
+                note: 'Manager submitted Technical revision' 
+            });
+            
+            ar.currentOwner = 'GENERAL_MANAGER';
+            ar.history.push({ 
+                timestamp: new Date().toISOString(), 
+                actor: currentUser.name, 
+                role: currentUser.role, 
+                action: 'Technical Revision Submitted', 
+                note: 'Technical domain reset to PENDING for GM Review' 
+            });
+            
+            localStorage.setItem(NS_AR, JSON.stringify(ars));
+            showToast('Technical Revision Submitted!');
+            openArDetail(ar.id); 
+            renderAreaRequests(); 
+            renderDashboard();
+        }
+
+        // --- TASK & PROJECT MANAGEMENT (Base extended) ---
+        function openTaskDetail(taskId) {
+            const task = getVisibleTasks().find(t => t.id === taskId);
+            if(!task) return;
+            currentDetailTaskId = taskId;
+            const proj = getRawProjects().find(p => p.id === task.projectId);
+            const user = getRawUsers().find(u => u.id === task.assignee);
+
+            document.getElementById('dt-id').textContent = `#${task.id}`;
+            document.getElementById('dt-name').textContent = task.name;
+            document.getElementById('dt-project').textContent = proj ? proj.name : (task.areaRequestId ? `AR: ${task.areaRequestId}` : 'Unknown');
+            document.getElementById('dt-desc').textContent = task.desc;
+            document.getElementById('dt-assignee').textContent = user ? user.name : 'Unknown';
+            document.getElementById('dt-priority').innerHTML = getPriorityBadge(task.priority);
+            document.getElementById('dt-deadline').textContent = task.deadline;
+            
+            if(isOverdue(task)) document.getElementById('dt-deadline').classList.add('text-red-600', 'font-bold');
+            else document.getElementById('dt-deadline').classList.remove('text-red-600', 'font-bold');
+            document.getElementById('dt-status').innerHTML = getStatusBadge(task.status);
+            
+            const pb = document.getElementById('dt-progress-bar');
+            pb.style.width = `${task.progress}%`; pb.textContent = `${task.progress}%`;
+            document.getElementById('dt-input-status').value = task.status;
+            document.getElementById('dt-input-progress').value = task.progress;
+            document.getElementById('dt-input-note').value = '';
+
+            // 11, 12 & 13. PENANAMAN TIANG SPECIFIC LOGIC (Using taskType)
+            const pSec = document.getElementById('dt-pole-section');
+            if(task.taskType === 'POLE_INSTALLATION') {
+                pSec.classList.remove('hide');
+                document.getElementById('pl-depth').value = task.poleDocumentation?.plantingDepth || '';
+                document.getElementById('pl-dia').value = task.poleDocumentation?.concreteDiameter || '';
+                document.getElementById('pl-dist').value = task.poleDocumentation?.concreteDistance || '';
+                document.getElementById('pl-coord').value = task.poleDocumentation?.coordinates || '';
+                document.getElementById('pl-photo-data').value = task.poleDocumentation?.waterpassPhoto ? 'exists' : ''; // Just to marker for UI
+                document.getElementById('pl-validation-msg').classList.add('hide');
+                updatePoleChecklist(); // render checklist state
+            } else { pSec.classList.add('hide'); }
+
+            const histArray = [...(task.history || [])].reverse();
+            document.getElementById('dt-history').innerHTML = histArray.map(h => `
+                <div class="border-l-2 border-blue-200 pl-3 pb-3 relative">
+                    <div class="absolute w-2 h-2 bg-blue-500 rounded-full -left-[5px] top-1.5"></div>
+                    <div class="text-[10px] text-gray-400 mb-0.5">${new Date(h.timestamp).toLocaleString('id-ID')}</div>
+                    <div class="text-xs font-semibold text-gray-700">${h.actor} <span class="font-normal text-gray-500">→ ${h.action}</span></div>
+                    ${h.note ? `<div class="text-xs text-gray-600 mt-1 italic">"${h.note}"</div>` : ''}
+                </div>
+            `).join('') || '<p class="text-xs text-gray-400">No activity.</p>';
+            
+            document.getElementById('modal-task-detail').classList.remove('hide');
+        }
+
+        // Live calculation of checklist for Pole Documentation
+        function updatePoleChecklist() {
+            const depth = parseFloat(document.getElementById('pl-depth').value);
+            const dia = parseFloat(document.getElementById('pl-dia').value);
+            const dist = parseFloat(document.getElementById('pl-dist').value);
+            const coord = document.getElementById('pl-coord').value.trim();
+            const photoData = document.getElementById('pl-photo-data').value;
+
+            const vDepth = depth >= 140; // Utilizing logic Actual >= Standard
+            const vDia = dia >= 20;
+            const vDist = dist >= 10;
+            const vCoord = coord.length > 5;
+            const vPhoto = photoData.length > 0;
+
+            const updateItem = (id, isValid, htmlStr) => {
+                const el = document.getElementById(id);
+                el.className = `checklist-item ${isValid ? 'valid' : 'invalid'}`;
+                el.innerHTML = `<i class="fa-solid ${isValid ? 'fa-check' : 'fa-xmark'} w-4 text-center"></i> <span>${htmlStr}</span>`;
+            }
+
+            updateItem('chk-depth', vDepth, `Planting Depth<br><span class="text-[9px] text-gray-500">Std: 140 CM | Act: ${depth || '-'} CM | <b class="${vDepth?'text-green-600':'text-red-600'}">${vDepth?'PASS':'FAIL'}</b></span>`);
+            updateItem('chk-dia', vDia, `Concrete Diameter<br><span class="text-[9px] text-gray-500">Std: 20 CM | Act: ${dia || '-'} CM | <b class="${vDia?'text-green-600':'text-red-600'}">${vDia?'PASS':'FAIL'}</b></span>`);
+            updateItem('chk-dist', vDist, `Concrete Distance<br><span class="text-[9px] text-gray-500">Std: 10 CM | Act: ${dist || '-'} CM | <b class="${vDist?'text-green-600':'text-red-600'}">${vDist?'PASS':'FAIL'}</b></span>`);
+            updateItem('chk-coord', vCoord, `Coordinates Required<br><span class="text-[9px] text-gray-500">Act: ${coord || 'None'} | <b class="${vCoord?'text-green-600':'text-red-600'}">${vCoord?'PASS':'FAIL'}</b></span>`);
+            updateItem('chk-photo', vPhoto, `Waterpass Photo Required<br><span class="text-[9px] text-gray-500">Val: <b class="${vPhoto?'text-green-600':'text-red-600'}">${vPhoto?'PASS':'FAIL'}</b></span>`);
+
+            return vDepth && vDia && vDist && vCoord && vPhoto;
+        }
+
+        function handlePhotoUpload(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                document.getElementById('pl-photo-data').value = JSON.stringify({
+                    name: file.name, type: file.type, data: ev.target.result, uploadedAt: new Date().toISOString()
+                });
+                updatePoleChecklist();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveTaskUpdate() {
+            if(!currentDetailTaskId) return;
+            const newStatus = document.getElementById('dt-input-status').value;
+            let newProgress = parseInt(document.getElementById('dt-input-progress').value);
+            const note = document.getElementById('dt-input-note').value.trim();
+            
+            if(isNaN(newProgress)) newProgress = 0; if(newProgress < 0) newProgress = 0; if(newProgress > 100) newProgress = 100;
+            if(newStatus === 'COMPLETED') newProgress = 100;
+
+            const allTasks = getRawTasks();
+            const taskIndex = allTasks.findIndex(t => t.id === currentDetailTaskId);
+            if (taskIndex === -1) return;
+            const task = allTasks[taskIndex];
+
+            if (currentUser.role !== 'MANAGER' && task.assignee !== currentUser.id) { showToast("Akses ditolak!", true); return; }
+
+            // Validate Pole Installation Documentation strictly based on taskType
+            if(task.taskType === 'POLE_INSTALLATION') {
+                const isValid = updatePoleChecklist();
+                let photoData = task.poleDocumentation?.waterpassPhoto || null;
+                if(document.getElementById('pl-photo-data').value && document.getElementById('pl-photo-data').value !== 'exists') {
+                    photoData = JSON.parse(document.getElementById('pl-photo-data').value);
+                }
+
+                const docObj = {
+                    plantingDepth: document.getElementById('pl-depth').value,
+                    concreteDiameter: document.getElementById('pl-dia').value,
+                    concreteDistance: document.getElementById('pl-dist').value,
+                    coordinates: document.getElementById('pl-coord').value,
+                    waterpassPhoto: photoData,
+                    timestamp: new Date().toISOString()
+                };
+                task.poleDocumentation = docObj;
+
+                if (newStatus === 'COMPLETED' && !isValid) {
+                    const msgEl = document.getElementById('pl-validation-msg');
+                    msgEl.textContent = "Validation Failed: Cannot mark as COMPLETED until all standards are strictly met.";
+                    msgEl.classList.remove('hide');
+                    showToast("Validasi Penanaman Tiang Gagal!", true);
+                    return; // Blocking save transition to completed
+                }
+                
+                if (isValid && newStatus === 'COMPLETED' && task.status !== 'COMPLETED') {
+                    task.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, action: 'Pole Installation Documentation Submitted', note: 'Standard achieved.' });
+                    
+                    const projs = getRawProjects();
+                    const p = projs.find(x => x.id === task.projectId);
+                    if (p && p.areaRequestId) {
+                        const ars = getRawAR();
+                        const ar = ars.find(a => a.id === p.areaRequestId);
+                        if(ar) {
+                            ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: 'Pole Installation Documentation Submitted', note: 'Pole standards verified.' });
+                            localStorage.setItem(NS_AR, JSON.stringify(ars));
+                        }
+                    }
+                }
+            }
+
+            let changes = [];
+            if(task.status !== newStatus) changes.push(`Status to ${newStatus}`);
+            if(task.progress !== newProgress) changes.push(`Progress to ${newProgress}%`);
+            
+            task.status = newStatus; task.progress = newProgress;
+            
+            // Standard History Update & Lifecycle Synchronization
+            if(changes.length > 0 || note) {
+                task.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, action: changes.length > 0 ? `Updated: ${changes.join(', ')}` : 'Added Note', note: note });
+                
+                if(changes.length > 0) {
+                    // Sync field work lifecycle to Project and AR
+                    if (task.projectId && newStatus === 'IN PROGRESS') {
+                        const projs = getRawProjects();
+                        const p = projs.find(x => x.id === task.projectId);
+                        if(p && p.status === 'ASSIGNED') {
+                            p.status = 'ON PROGRESS';
+                            localStorage.setItem(NS_PROJECTS, JSON.stringify(projs));
+                            
+                            if (p.areaRequestId) {
+                                const ars = getRawAR();
+                                const ar = ars.find(a => a.id === p.areaRequestId);
+                                if(ar && ar.status === 'PROJECT_ASSIGNED') {
+                                    ar.status = 'ON_PROJECT';
+                                    ar.history.push({ timestamp: new Date().toISOString(), actor: currentUser.name, role: currentUser.role, action: 'Field Work Started', note: `Task ${task.name} started` });
+                                    localStorage.setItem(NS_AR, JSON.stringify(ars));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            localStorage.setItem(NS_TASKS, JSON.stringify(allTasks));
+            updateProjectsProgress(); // will auto-complete Project and AR if conditions met
+            
+            showToast("Update tersimpan!");
+            openTaskDetail(currentDetailTaskId); 
+            if(activeView === 'tasks') renderTasks(); 
+            if(activeView === 'dashboard') renderDashboard();
+        }
+
+        // Standard assignment/project base logic
+        function openAssignTaskModal() { 
+            if(currentUser.role === 'MANAGER' || currentUser.role === 'SPV') {
+                const projs = getVisibleProjects();
+                if(projs.length === 0) {
+                    showToast('Tidak ada project untuk di-assign task.', true);
+                    return;
+                }
+                const projsHTML = projs.map(p => `<option value="${p.id}">Project: ${p.id} - ${p.name}</option>`).join('');
+                document.getElementById('ct-project').innerHTML = projsHTML;
+                document.getElementById('ct-assignee').innerHTML = getRawUsers().map(u => `<option value="${u.id}">${u.name} (${u.role})</option>`).join('');
+                document.getElementById('ct-assignee').value = currentUser.id; // Auto select creator
+                document.getElementById('modal-assign-task').classList.remove('hide');
+            }
+        }
+        
+        function saveNewTask() {
+            if(currentUser.role !== 'MANAGER' && currentUser.role !== 'SPV') return;
+            const projectId = document.getElementById('ct-project').value;
+            // Lookup related areaRequestId if applicable
+            const projs = getRawProjects();
+            const selectedProj = projs.find(p => p.id === projectId);
+            const aReqId = selectedProj ? selectedProj.areaRequestId : null;
+
+            const tasks = getRawTasks();
+            tasks.push({ 
+                id: 'T' + new Date().getTime().toString().slice(-4), projectId: projectId, areaRequestId: aReqId, 
+                taskType: document.getElementById('ct-type').value, name: document.getElementById('ct-name').value, 
+                desc: document.getElementById('ct-desc').value, assignee: document.getElementById('ct-assignee').value, 
+                priority: document.getElementById('ct-priority').value, deadline: document.getElementById('ct-deadline').value, 
+                status: 'ASSIGNED', progress: 0, 
+                history: [{ timestamp: new Date().toISOString(), actor: currentUser.name, action: 'Created & Assigned', note: '' }]
+            });
+            localStorage.setItem(NS_TASKS, JSON.stringify(tasks)); closeModal('modal-assign-task'); renderTasks(); updateProjectsProgress();
+            showToast('Task / Work Activity berhasil ditambahkan!');
+        }
+
+        function openCreateProjectModal() { 
+            if(currentUser.role === 'MANAGER') {
+                document.getElementById('cp-spv').innerHTML = getRawUsers().filter(u=>u.role==='SPV').map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+                document.getElementById('modal-create-project').classList.remove('hide'); 
+            }
+        }
+        function saveNewProject() {
+            if(currentUser.role !== 'MANAGER') return;
+            const projs = getRawProjects();
+            projs.push({ id: 'P' + new Date().getTime().toString().slice(-4), areaRequestId: null, name: document.getElementById('cp-name').value, client: document.getElementById('cp-client').value, targetDate: document.getElementById('cp-target').value, spvId: document.getElementById('cp-spv').value, status: 'ASSIGNED', progress: 0, priority: 'MEDIUM', managerNote: 'Manually created general project' });
+            localStorage.setItem(NS_PROJECTS, JSON.stringify(projs)); closeModal('modal-create-project'); renderProjects();
+        }
+
+        function openProjectDetail(projectId) {
+            const project = getVisibleProjects().find(p => p.id === projectId);
+            if(!project) return;
+            document.getElementById('dp-id').textContent = `#${project.id}`; document.getElementById('dp-name').textContent = project.name; document.getElementById('dp-client').textContent = project.client;
+            document.getElementById('dp-target').textContent = project.targetDate; document.getElementById('dp-status').innerHTML = getStatusBadge(project.status);
+            document.getElementById('dp-progress-text').textContent = `${project.progress}%`; document.getElementById('dp-progress-bar').style.width = `${project.progress}%`;
+            
+            const tbody = document.getElementById('dp-tasks-body');
+            const vTasks = getVisibleTasks().filter(t => t.projectId === projectId);
+            tbody.innerHTML = vTasks.length ? vTasks.map(t => `<tr class="hover:bg-gray-50 cursor-pointer" onclick="closeModal('modal-project-detail'); openTaskDetail('${t.id}')"><td class="px-4 py-2 font-medium">${t.name}</td><td class="px-4 py-2">${getRawUsers().find(u=>u.id===t.assignee)?.name || 'N/A'}</td><td class="px-4 py-2">${getStatusBadge(t.status)}</td></tr>`).join('') : `<tr><td colspan="3" class="text-center py-4 text-gray-400">Tidak ada work activities.</td></tr>`;
+            document.getElementById('modal-project-detail').classList.remove('hide');
+        }
+
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            document.getElementById('toast-icon').className = `fa-solid ${isError ? 'fa-triangle-exclamation' : 'fa-circle-check'}`;
+            t.className = `fixed bottom-4 right-4 text-white px-4 py-3 rounded shadow-lg transform transition-all z-50 text-sm flex items-center gap-2 translate-y-0 opacity-100 ${isError ? 'bg-red-600' : 'bg-gray-800'}`;
+            setTimeout(() => { t.classList.remove('translate-y-0', 'opacity-100'); t.classList.add('translate-y-20', 'opacity-0'); }, 3000);
+        }
+
+        document.addEventListener('DOMContentLoaded', checkAuth);
+    </script>
+</body>
+</html>
