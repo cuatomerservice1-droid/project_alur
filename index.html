@@ -204,7 +204,6 @@
     </div>
 
     <!-- MODALS -->
-    <!-- (All Modals remain identical functionally, wrapped in slightly rounded borders) -->
     
     <!-- CREATE AREA REQUEST MODAL -->
     <div id="modal-create-ar" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hide modal">
@@ -391,7 +390,7 @@
         </div>
     </div>
 
-    <!-- MODAL ADD PREPARATION ITEM (PATCH 3 & 3B) -->
+    <!-- MODAL ADD PREPARATION ITEM -->
     <div id="modal-add-prep-item" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center hide modal">
         <div class="bg-white rounded-2xl shadow-2xl w-[500px] max-w-full overflow-hidden flex flex-col border border-slate-200">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -408,7 +407,7 @@
                     <div><label class="block text-[10px] font-bold text-slate-700 mb-1 uppercase tracking-widest" id="lbl-prep-unit">Unit</label><input type="text" id="prep-unit" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-slate-50 focus:bg-white transition-colors" placeholder="e.g. meter, pcs"></div>
                 </div>
 
-                <!-- EXCLUSIVE FOR LABOR (PATCH 3B FIX) -->
+                <!-- EXCLUSIVE FOR LABOR -->
                 <div class="grid grid-cols-2 gap-4 hide" id="prep-labor-work-row">
                     <div><label class="block text-[10px] font-bold text-slate-700 mb-1 uppercase tracking-widest">Work Quantity *</label><input type="number" id="prep-work-qty" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-slate-50 focus:bg-white transition-colors" min="1" value="1" oninput="calcLaborTotal()"></div>
                     <div><label class="block text-[10px] font-bold text-slate-700 mb-1 uppercase tracking-widest">Unit Wage (Rp) *</label><input type="number" id="prep-unit-wage" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-slate-50 focus:bg-white transition-colors font-mono" min="0" oninput="calcLaborTotal()"></div>
@@ -811,7 +810,7 @@
             let kpiHtml = '';
             if (currentUser.role === 'MANAGER') {
                 kpiHtml = createAestheticCard("Total Area Req", ars.length, "fa-folder-open", "from-slate-400", "to-slate-300", "text-slate-600", "md") +
-                          createAestheticCard("Waiting Review", ars.filter(a=>a.currentOwner==='MANAGER' && ['PENDING_MANAGER_REVIEW','PENDING_MANAGER_DRAFTER_REVIEW','PENDING_MANAGER_LEGAL_REVIEW','PENDING_MANAGER_COST_REVIEW', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE'].includes(a.status)).length, "fa-clock", "from-purple-500", "to-indigo-500", "text-purple-600", "lg") +
+                          createAestheticCard("Waiting Review", ars.filter(a=> (a.currentOwner==='MANAGER' && ['PENDING_MANAGER_REVIEW','PENDING_MANAGER_DRAFTER_REVIEW','PENDING_MANAGER_LEGAL_REVIEW','PENDING_MANAGER_COST_REVIEW', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE'].includes(a.status)) || (a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.technical?.status === 'RETURN')).length, "fa-clock", "from-purple-500", "to-indigo-500", "text-purple-600", "lg") +
                           createAestheticCard("Prep / Costing", ars.filter(a=>['READY_FOR_NEXT_STAGE','PREPARATION_IN_PROGRESS','PENDING_PURCHASING_SOURCING','PENDING_MANAGER_COST_REVIEW'].includes(a.status)).length, "fa-calculator", "from-blue-500", "to-cyan-500", "text-blue-600", "lg") +
                           createAestheticCard("Ready GM/Proc", ars.filter(a=>['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT'].includes(a.status)).length, "fa-check-double", "from-emerald-500", "to-teal-500", "text-emerald-600", "lg");
             } 
@@ -862,6 +861,10 @@
             } else if (currentUser.role === 'SPV' || currentUser.role === 'DRAFTER') {
                 attentionItems = tasks.filter(t => t.assignee === currentUser.id && (t.status === 'ASSIGNED' || t.status === 'IN PROGRESS'));
                 if(currentUser.role === 'DRAFTER') ars.filter(a => a.currentOwner === 'DRAFTER').forEach(a => attentionItems.push(a));
+            } else if (currentUser.role === 'MANAGER') {
+                attentionItems = ars.filter(a => a.currentOwner === 'MANAGER' || (a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.technical?.status === 'RETURNED'));
+            } else if (currentUser.role === 'LEGAL') {
+                attentionItems = ars.filter(a => a.currentOwner === 'LEGAL' || (a.status === 'READY_FOR_GM_APPROVAL' && a.gmApproval?.legal?.status === 'RETURNED'));
             } else {
                 attentionItems = ars.filter(a => a.currentOwner === currentUser.role);
             }
@@ -1193,9 +1196,9 @@
                 }
 
                 const isLegalUserEditing = currentUser.role === 'LEGAL' && (ar.status === 'ASSIGNED_TO_LEGAL' || ar.status === 'RETURNED_TO_LEGAL');
-                const isManagerRevisingLegal = currentUser.role === 'MANAGER' && ar.status === 'READY_FOR_GM_APPROVAL' && ar.gmApproval?.legal?.status === 'RETURNED';
+                const isLegalRevisingLegal = currentUser.role === 'LEGAL' && ar.status === 'READY_FOR_GM_APPROVAL' && ar.gmApproval?.legal?.status === 'RETURNED';
 
-                if (isLegalUserEditing || isManagerRevisingLegal) {
+                if (isLegalUserEditing || isLegalRevisingLegal) {
                     lForm.classList.remove('hide'); lDisp.classList.add('hide');
                     document.getElementById('in-permit-status').value = ar.legalResult?.permitStatus || 'CLEAR';
                     document.getElementById('in-related-party').value = ar.legalResult?.relatedParty || '';
@@ -1205,7 +1208,7 @@
                     document.getElementById('in-legal-notes').value = ar.legalResult?.legalNotes || '';
                     
                     const lBtnCont = document.getElementById('dar-legal-btn-container');
-                    if (isManagerRevisingLegal) {
+                    if (isLegalRevisingLegal) {
                         lBtnCont.innerHTML = `<button onclick="submitLegalRevision()" class="w-full bg-indigo-600 text-white text-sm py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-500/20 cursor-pointer">Submit Legal Revision</button>`;
                     } else {
                         lBtnCont.innerHTML = `<button onclick="submitLegalResult()" class="w-full bg-indigo-600 text-white text-sm py-2.5 rounded-lg font-semibold hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-500/20 cursor-pointer">Submit Legal Result</button>`;
@@ -1330,7 +1333,7 @@
                 }
             }
 
-            // General Manager Action (PATCH 4)
+            // General Manager Action
             if(currentUser.role === 'GENERAL_MANAGER' && ar.status === 'READY_FOR_GM_APPROVAL') {
                 mgrSec.classList.remove('hide');
                 mgrSec.querySelector('h4').innerHTML = `<i class="fa-solid fa-gavel text-amber-400"></i> <span class="text-amber-50" id="mgr-action-title">General Manager Review</span>`;
@@ -1572,7 +1575,7 @@
                 html += `</div>`;
             }
 
-            // GM APPROVAL SUMMARY (PATCH 4)
+            // GM APPROVAL SUMMARY
             if (ar.gmApproval && ['READY_FOR_GM_APPROVAL', 'READY_FOR_PROCUREMENT', 'PENDING_BYPASS_APPROVAL', 'PENDING_PROJECT_RELEASE', 'PROJECT_ASSIGNED', 'ON_PROJECT', 'COMPLETED'].includes(ar.status)) {
                 const tStat = ar.gmApproval.technical.status;
                 const lStat = ar.gmApproval.legal.status;
@@ -1880,8 +1883,9 @@
             renderAreaRequests(); renderDashboard();
         }
 
+        // FIXED: Only LEGAL role can submit Legal Revision
         function submitLegalRevision() {
-            if(!currentUser || currentUser.role !== 'MANAGER') { showToast('Akses ditolak', true); return; }
+            if(!currentUser || currentUser.role !== 'LEGAL') { showToast('Akses ditolak', true); return; }
             const status = document.getElementById('in-permit-status').value; 
             const info = document.getElementById('in-permit-info').value.trim();
             const cons = document.getElementById('in-constraints').value.trim(); 
@@ -2003,7 +2007,7 @@
             openArDetail(currentDetailArId); renderAreaRequests(); renderDashboard();
         }
 
-        // --- PROCUREMENT & PROJECT RELEASE (PATCH 5) ---
+        // --- PROCUREMENT & PROJECT RELEASE ---
         function procurementAction(actionType) {
             const ars = getRawAR();
             const ar = ars.find(a => a.id === currentDetailArId);
@@ -2074,7 +2078,7 @@
             renderDashboard();
         }
 
-        // --- GM ACTIONS (PATCH 4) ---
+        // --- GM ACTIONS (PARALLEL APPROVAL WORKFLOW) ---
         function gmAction(domain, action) {
             if (!currentUser || currentUser.role !== 'GENERAL_MANAGER') {
                 showToast('Akses ditolak: Hanya General Manager.', true);
@@ -2116,8 +2120,9 @@
             const noteInputEl = document.getElementById(noteInputId);
             const noteInput = noteInputEl ? noteInputEl.value.trim() : '';
             
+            // STRICT VALIDATION: Return reason cannot be empty or just spaces
             if (action === 'RETURN' && noteInput === "") {
-                showToast('Return reason is required.', true);
+                showToast('Return reason is required and cannot be empty.', true);
                 return; // BLOCK ACTION
             }
             
@@ -2133,7 +2138,6 @@
                 note: domainObj.note
             });
 
-            // Main history update
             const actionLabel = action === 'APPROVE' ? 'Approve' : 'Return';
             const domainLabel = domain === 'TECHNICAL' ? 'Technical' : 'Legal';
             
@@ -2145,11 +2149,11 @@
                 note: domainObj.note 
             });
 
-            if (action === 'RETURN') {
-                ar.currentOwner = domain === 'TECHNICAL' ? 'MANAGER' : 'LEGAL';
-            }
+            // Keep currentOwner as GENERAL_MANAGER to allow parallel dashboard processing.
+            // Manager/Legal dash will catch it via a specific nested query.
+            ar.currentOwner = 'GENERAL_MANAGER';
 
-            // Check finalization safely without duplicating
+            // READY FOR PROCUREMENT TRANSITION LOGIC
             if (ar.gmApproval.technical.status === 'APPROVED' && ar.gmApproval.legal.status === 'APPROVED') {
                 if (ar.status !== 'READY_FOR_PROCUREMENT') {
                     const oldStatus = ar.status;
